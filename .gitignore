@@ -1,0 +1,34 @@
+# Build products, installed dependencies, and machine-local state.
+/lib/
+/build*/
+/staging/
+/release/
+/artifacts/
+/qa-*/
+/data/
+/research/
+/research-evidence/
+/.agent-context/
+__pycache__/
+*.pyc
+*.log
+/*.json
+/*.png
+/native/*.exe
+/native/*.obj
+/native/*.pdb
+/.venv/
+# Local experiment / deployment helpers are intentionally outside the release source.
+/deploy_routing.py
+/dual_output.py
+/trial_soundcard.py
+/stop_trial.py
+/inspect_window.py
+/measure_acoustic_music.py
+/measure_delay.py
+/measure_native_delay.py
+/compare_latency.py
+/diagnose_timestamps.py
+/validate_*.py
+/verify_themes.py
+/DualTone.spec
