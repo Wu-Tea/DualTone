@@ -333,6 +333,20 @@ void Engine::run() {
         }
         while (!stop_flag) {
             auto packet = input.read();
+            bool tail_packet = false;
+            if (!packet && processor.reverb && processor.reverb->remaining > 0) {
+                // A stopped capture stream still needs a clock for the wet tail.
+                // Recheck capture first; never insert silence ahead of a ready packet.
+                WaitForSingleObject(input.ready, Reverb::TailPacketMs);
+                packet = input.read();
+                if (!packet) {
+                    if (output.padding() > output.rate * Reverb::TailPacketMs / 1000)
+                        continue;
+                    packet = Stream::Packet{};
+                    packet->data.resize(input.rate * Reverb::TailPacketMs / 1000 * ChannelCount);
+                    tail_packet = true;
+                }
+            }
             if (!packet) {
                 if (clock_seconds() - last > .1) {
                     std::lock_guard l(mutex);
@@ -371,11 +385,14 @@ void Engine::run() {
                  {"input_peak", peak},
                  {"output_peak", op},
                  {"discontinuities", input.discontinuities},
-                 {"source_timestamp_valid", !(packet->flags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR) &&
-                                                abs(packet->timestamp - packet->received) <= 1},
-                 {"source_clock_skew_ms", (packet->timestamp - packet->received) * 1000},
+                 {"reverb_tail", tail_packet},
                  {"dsp_ms", processed},
                  {"dsp_max_ms", max_dsp}});
+            if (!tail_packet) {
+                telemetry["source_timestamp_valid"] = !(packet->flags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR) &&
+                                                       abs(packet->timestamp-packet->received)<=1;
+                telemetry["source_clock_skew_ms"] = (packet->timestamp-packet->received)*1000;
+            }
         }
         {
             std::lock_guard l(mutex);
@@ -399,6 +416,8 @@ void Engine::run() {
     active = false;
 }
 json measure_latency(const json &cfg, bool probe) {
+    if (cfg.value("effect_mode", "space") == "reverb")
+        throw std::runtime_error("混响包含有意加入的反射与尾音；请切回空间补充后测量转发延迟");
     ComScope com;
     Stream source(cfg["source_id"], true), target(cfg["target_id"], true);
     source.start();

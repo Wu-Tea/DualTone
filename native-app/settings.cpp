@@ -51,7 +51,11 @@ json defaults() {
             {"bands",
              json::array({{{"low", 700.0}, {"high", 3500.0}, {"gain_db", 0.0}, {"enabled", true}}})},
             {"spatial_mode", "space"},
-            {"spatial_strength", 60.0}};
+            {"spatial_strength", 60.0},
+            {"effect_mode", "space"},
+            {"reverb_size", 40.0},
+            {"reverb_decay", Reverb::DefaultTailSeconds},
+            {"reverb_brightness", 40.0}};
 }
 static void number(const json &j, double lo, double hi, const char *name) {
     if (!j.is_number() || !std::isfinite(j.get<double>()) || j.get<double>() < lo ||
@@ -85,6 +89,11 @@ json validate(json v) {
         throw std::runtime_error("副路使用 space 空间补充");
     number(d["gain"], 0, 100, "gain");
     number(d["spatial_strength"], 0, 100, "spatial_strength");
+    if (d["effect_mode"] != "space" && d["effect_mode"] != "reverb")
+        throw std::runtime_error("effect_mode 必须为 space 或 reverb");
+    number(d["reverb_size"], 0, 100, "reverb_size");
+    number(d["reverb_decay"], Reverb::MinTailSeconds, Reverb::MaxTailSeconds, "reverb_decay");
+    number(d["reverb_brightness"], 0, 100, "reverb_brightness");
     if (!d["gains"].is_array() || d["gains"].size() != EqCount)
         throw std::runtime_error("EQ 需要 10 个频段");
     for (auto &x : d["gains"])
@@ -154,9 +163,9 @@ Store::Store(fs::path dir) : directory(fs::absolute(dir).lexically_normal()) {
     try {
         auto doc = read_json(p);
         int version = doc.at("version");
-        if (version != 1 && version != ConfigVersion)
+        if (version < 1 || version > ConfigVersion)
             throw std::runtime_error("不支持的配置版本");
-        migrate = version == 1;
+        migrate = version < ConfigVersion ? version : 0;
         auto c = validate(doc.at("current"));
         auto ps = doc.value("presets", json::object());
         if (!ps.is_object() || ps.size() > MaxPresets)
@@ -177,8 +186,9 @@ void Store::save() {
     if (failed)
         throw std::runtime_error(warning);
     auto p = directory / L"settings.json";
-    if (migrate && fs::exists(p) && !fs::exists(directory / L"settings.v1.backup.json"))
-        fs::copy_file(p, directory / L"settings.v1.backup.json");
+    auto backup = directory / (L"settings.v" + std::to_wstring(migrate) + L".backup.json");
+    if (migrate && fs::exists(p) && !fs::exists(backup))
+        fs::copy_file(p, backup);
     save_json(p, {{"version", ConfigVersion}, {"current", current}, {"presets", presets}});
     migrate = false;
 }

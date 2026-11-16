@@ -23,7 +23,7 @@ namespace fs = std::filesystem;
 using Microsoft::WRL::ComPtr;
 using Complex = std::complex<double>;
 inline constexpr int ProcessingRate = 48000, ChannelCount = 2, EqCount = 10, MaxBands = 8,
-                     ConfigVersion = 2;
+                     ConfigVersion = 3;
 inline constexpr size_t MaxConfigBytes = 128 * 1024, MaxPresets = 100, MaxNameLength = 60;
 inline constexpr double EqLimitDb = 12, MidCutDb = 12, HeadroomDb = 1, EqQ = 1.4;
 inline constexpr int SpatialRampFrames = 480, IdleWaitMs = 100, ControlTimeoutMs = 5000,
@@ -45,7 +45,8 @@ struct Store {
     fs::path directory;
     json current = defaults(), presets = json::object();
     std::string warning;
-    bool failed = false, migrate = false;
+    bool failed = false;
+    int migrate = 0;
     explicit Store(fs::path dir);
     void save();
     json add(std::string name);
@@ -70,12 +71,35 @@ struct Dsp {
     Complex eq_response(double hz) const;
     Complex band_response(double hz) const;
 };
+// Eight orthogonally mixed delay lines: wet signal only, never the main route.
+struct Reverb {
+    static constexpr size_t Lines = 8;
+    static constexpr double MinSizeScale = .65, MaxSizeScale = 1.5;
+    static constexpr double MinTailSeconds = .2, MaxTailSeconds = 4., DefaultTailSeconds = 1.2;
+    static constexpr double MinBrightnessHz = 1200, MaxBrightnessHz = 9000, HighPassHz = 180;
+    static constexpr double ParameterSmoothingSeconds = .03, TailFlushMultiples = 2;
+    static constexpr int TailPacketMs = 10;
+    // Unequal, pairwise-coprime delays at 48 kHz spread reflections in time.
+    static constexpr std::array<int, Lines> BaseFrames = {1423, 1783, 1973, 2089, 2269, 2549, 2843, 2969};
+    std::array<std::vector<double>, Lines> buffers;
+    std::array<size_t, Lines> positions{};
+    std::array<double, Lines> delays{}, target_delays{}, feedback{}, target_feedback{}, lowpass{};
+    std::array<double, 2> hp_input{}, hp_output{};
+    double damping = 0, target_damping = 0;
+    int remaining = 0, flush_frames = 0;
+    Reverb();
+    void configure(const json &cfg, bool reset);
+    std::array<double, 2> tick(double left, double right);
+};
 struct Processor {
     std::shared_ptr<Dsp> current;
     Sections eq;
     std::vector<std::pair<Sections, double>> bands;
     double mid = 1, target_mid = 1, mid_step = 0;
     int ramp = 0;
+    std::unique_ptr<Reverb> reverb;
+    double wet_mix = 0, wet_target = 0, wet_step = 0;
+    int wet_ramp = 0;
     void update(std::shared_ptr<Dsp> dsp);
     void process(std::vector<double> &interleaved, bool paused);
 };

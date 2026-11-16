@@ -12,6 +12,11 @@ from resampling import StreamingResampler
 from settings import validate
 from control import pipe_name
 
+REVERB_DEFAULTS=dict(effect_mode="space",reverb_size=40.0,reverb_decay=1.2,reverb_brightness=40.0)
+
+def native_defaults(cfg):
+    return {**validate(cfg),**REVERB_DEFAULTS}
+
 def driver(doc,ok=True):
     p=subprocess.run([str(ROOT/'build/test_driver.exe')],input=json.dumps(doc).encode(),capture_output=True,timeout=30)
     r=json.loads(p.stdout)
@@ -48,7 +53,7 @@ class NativeParity(unittest.TestCase):
                     np.testing.assert_allclose(np.array(r['samples']).reshape(-1,2),expected,atol=1e-12)
     def test_validation_and_legacy(self):
         for cfg in ({},{'spatial_mode':'original'},{'low':300,'high':3000},{'bands':None},{'gain':20.25}):
-            self.assertEqual(driver(dict(command='validate',settings=cfg))['result'],validate(cfg))
+            self.assertEqual(driver(dict(command='validate',settings=cfg))['result'],native_defaults(cfg))
         for cfg in ({'gain':True},{'gain':101},{'gains':[0]*9},{'low':0},{'bands':[]},{'unknown':2},{'eq_enabled':1}):
             self.assertFalse(driver(dict(command='validate',settings=cfg),False)['ok'])
     def test_existing_pipe_namespace(self):
@@ -76,7 +81,7 @@ class NativeParity(unittest.TestCase):
             def call(*args,ok=True):
                 p=subprocess.run([str(ROOT/'dist/DualToneCLI.exe'),'--data-dir',temp,*args],capture_output=True,timeout=15)
                 r=json.loads(p.stdout);self.assertEqual(r['ok'],ok,r);return r
-            self.assertFalse(call('status')['result']['running']);self.assertEqual(call('get')['result'],validate({}))
+            self.assertFalse(call('status')['result']['running']);self.assertEqual(call('get')['result'],native_defaults({}))
             call('set','--json','{"gain":7.5,"spatial_strength":49}')
             proc=subprocess.Popen([str(ROOT/'dist/DualTone.exe'),'--data-dir',temp,'--quit-after','60'],creationflags=subprocess.CREATE_NO_WINDOW)
             try:

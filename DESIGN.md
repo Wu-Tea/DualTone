@@ -5,7 +5,7 @@ FabFilter for a dominant interactive response/spectrum canvas; FxSound for
 direct detailed EQ controls. User rejected the first generic settings-form
 layout as insufficient visual translation of those references.
 
-Operate mode. Native main window is 440 × 760 logical pixels, with one grouped device
+Operate mode. Native main window is 440 × 800 logical pixels, with one grouped device
 selector, supplementary gain/mute, a response/spectrum preview, preset and queue
 status. Detailed adjustment uses a separate nonmodal 940 × 760 window, retaining
 the main control panel rather than stretching it into a large form.
@@ -46,12 +46,12 @@ and menu items have 8 px padding, so expanded and collapsed content share the
 same column origins without removing internal breathing room. Two-line device
 items are 56 px tall; placeholder items are 40 px. Selected items use a tinted
 surface and a checkmark, independently of the neutral hover/keyboard highlight.
-Keep at least 420 x 688 logical pixels so the footer remains inside the window.
+Keep at least 420 x 800 logical pixels so the footer remains inside the window.
 Do not fix alignment by zeroing control padding or placing content on a focus
 border. Verify open menus as well as the closed panel in light and dark themes.
 
-Verification: actual Qt window captures at default and minimum size, QTest
-keyboard EQ editing, CLI/GUI shared-state tests, and real endpoint playback.
+Verification: actual Slint window captures at default and minimum size, keyboard
+EQ editing, GUI/CLI shared-state tests, and real endpoint playback.
 
 The detailed EQ is edited directly on the chart. Amber handles/curve represent
 EQ gains; the dashed curve shows the band-filtered response. Keep handles at
@@ -68,3 +68,16 @@ entries. Deleting a preset retains current processing values.
 
 
 多段过滤沿用编辑器的行式参数布局：每行开关、下限、上限、增益、删除；上方总开关旁显示启用段数和新增操作。列表最多 8 行，默认窗口显示 3 行、最小高度显示 2 行，其余滚动。新增行关闭，当前设置迁移为第一行。金色 EQ 锚点仍独立可拖动，虚线显示真实多段混合响应。数值非法时提交或失焦恢复实际参数，不能显示未生效值。
+
+
+The main panel has two auxiliary processing modes: space and wet-only reverb.
+A shared Row layout vertically centers mixed-height icons, labels and controls.
+Device captions align with text inside the selectors; legends use vector line
+segments and fixed compact columns. Filter rows explicitly label lower bound,
+upper bound and gain, with units beside their inputs.
+
+Reverb controls stay on the main panel: room size, decay seconds and brightness,
+using a shared parameter row with a fixed label and right-aligned value column.
+The existing auxiliary volume is the wet amount. Mode selection does not alter
+old EQ, filter, body-retention or device settings. Reverb input processing is
+labeled separately; the graph shows EQ/filter response, not the FDN response.

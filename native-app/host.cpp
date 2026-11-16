@@ -56,7 +56,15 @@ json Host::schema() {
              {{"gain", {0, 100}},
               {"low", {50, 15000}},
               {"high", {100, 16000}},
-              {"spatial_strength", {0, 100}}}},
+              {"spatial_strength", {0, 100}},
+              {"reverb_size", {0, 100}},
+              {"reverb_decay", {Reverb::MinTailSeconds, Reverb::MaxTailSeconds}},
+              {"reverb_brightness", {0, 100}}}},
+            {"effects", {{"modes", {"space", "reverb"}}, {"default", "space"},
+                         {"reverb", {{"wet_only", true}, {"size_unit", "percent"},
+                         {"decay_unit", "seconds"}, {"brightness_unit", "percent"},
+                         {"main_added_delay_frames", 0},
+                         {"semantics", "Auxiliary-only FDN tail; decay is nominal low-frequency RT60. EQ and bands filter the reverb input. Spatial strength is retained but inactive in reverb mode."}}}}},
             {"eq_frequencies_hz", EqFrequencies},
             {"eq_gain_range_db", {-12, 12}},
             {"spatial",
@@ -317,7 +325,13 @@ void Server::run() {
                     throw std::runtime_error("请求过大");
             }
             auto r = envelope(host, json::parse(msg.substr(0, msg.find('\n')))).dump() + "\n";
-            io(first, true, r.data(), DWORD(r.size()), got);
+            if (io(first, true, r.data(), DWORD(r.size()), got) && got == r.size()) {
+                // DisconnectNamedPipe discards unread buffered data. The one-request
+                // protocol's client closes only after consuming the response. Wait
+                // for that EOF, bounded by ControlTimeoutMs, before disconnecting.
+                char unused;
+                io(first, false, &unused, 1, got);
+            }
         } catch (...) {
         }
         DisconnectNamedPipe(first);

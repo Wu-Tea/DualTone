@@ -56,7 +56,7 @@ int cli_main(int argc, wchar_t **argv) {
         }
         if (cmd == "import") {
             auto doc = read_json(next());
-            if (doc.at("version") != 1 && doc.at("version") != 2)
+            if (doc.at("version") < 1 || doc.at("version") > ConfigVersion)
                 throw std::runtime_error("不支持的预设版本");
             args = validate(doc.at("settings"));
             args.erase("source_id");
@@ -138,7 +138,7 @@ int cli_main(int argc, wchar_t **argv) {
                 throw std::runtime_error("没有运行中的 DualTone");
         }
         if (cmd == "export" && result.value("ok", false)) {
-            save_json(file, {{"version", 2}, {"settings", result["result"]}});
+            save_json(file, {{"version", ConfigVersion}, {"settings", result["result"]}});
             result["result"] = {{"exported", utf8(fs::absolute(file).wstring())}};
         }
         std::cout << result.dump(2) << std::endl;

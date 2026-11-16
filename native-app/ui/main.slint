@@ -8,6 +8,10 @@ export global UiData {
     in-out property <bool> eq-on: true;
     in-out property <bool> band-on: true;
     in-out property <float> gain: 8;
+    in-out property <bool> reverb: false;
+    in-out property <float> reverb-size: 40;
+    in-out property <float> reverb-decay: 1.2;
+    in-out property <float> reverb-brightness: 40;
     in-out property <float> body: 44;
     in-out property <float> minimum-body: 25.1189;
     in-out property <float> input-level: 0;
@@ -38,6 +42,8 @@ export global UiData {
     callback band-edit(int, string, string);
     callback eq-edit(int, float);
 }
+// All mixed-height controls share a vertical center, including fixed-size icons.
+component Row inherits HorizontalLayout { cross-axis-alignment: center; }
 component Label inherits Text {
     color: UiData.dark ? #e4eaf0 : #18242d;
     font-family: "Microsoft YaHei UI";
@@ -90,6 +96,30 @@ component Fader inherits Rectangle {
     }
 }
 component Meter inherits Rectangle { in property <float> level; height: 4px; background: UiData.dark ? #343f47 : #dfe5e8; Rectangle {x: 0px;width: parent.width*clamp(root.level,0,1);height: 4px;background: #238c7a;} }
+component ParameterRow inherits Row {
+    in property <string> caption;
+    in property <string> display;
+    in property <float> value;
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    in property <float> step: 1;
+    callback edited(float);
+    height: 32px;spacing: 8px;
+    Label {text: root.caption;width: 60px;}
+    Fader {value: root.value;minimum: root.minimum;maximum: root.maximum;step: root.step;label: root.caption;horizontal-stretch: 1;edited(v) => {root.edited(v);}}
+    Muted {text: root.display;width: 52px;horizontal-alignment: right;}
+}
+component Legend inherits Row {
+    min-width: 90px;max-width: 90px;horizontal-stretch: 0;
+    in property <string> caption;
+    in property <color> ink;
+    in property <bool> dashed: false;
+    spacing: 6px;
+    Rectangle {width: 14px;height: 2px;background: root.ink;
+        if root.dashed: Rectangle {x: 5px;width: 4px;height: 2px;background: #20292f;}
+    }
+    Label {text: root.caption;color: root.ink;font-size: 11px;}
+}
 component NumEdit inherits Rectangle {
     in property <string> value;
     in property <string> label;
@@ -123,12 +153,12 @@ component Presets inherits Rectangle {
     }
 }
 export component MainWindow inherits Window {
-    title: "DualTone"; preferred-width: 440px;preferred-height: 760px;min-width: 420px;min-height: 760px;
+    title: "DualTone"; preferred-width: 440px;preferred-height: 800px;min-width: 420px;min-height: 800px;
     default-font-family: "Microsoft YaHei UI";default-font-size: 12px;
     background: UiData.dark ? #1c2329 : #f1f4f6;
     in-out property <ColorScheme> scheme <=> Palette.color-scheme;
-    VerticalLayout { padding: 18px;spacing: 14px;
-        HorizontalLayout { height: 34px;spacing: 12px;
+    VerticalLayout { padding: 18px;spacing: 12px;
+        Row { height: 34px;spacing: 12px;
             Image {source: UiData.logo;width: 34px;height: 34px;}
             Label {text: "DualTone";font-size: 22px;font-weight: 600;horizontal-stretch: 1;}
             Muted {text: UiData.status;color: #238c7a;}
@@ -136,35 +166,47 @@ export component MainWindow inherits Window {
         }
         Rectangle {background: UiData.dark ? #242c32 : white;border-color: UiData.dark ? #3b454d : #dfe5e9;border-width: 1px;border-radius: 12px;height: 160px;
             VerticalLayout {padding: 12px;spacing: 6px;
-                HorizontalLayout {height: 18px;padding-left: 40px;Muted {text: "主音频";horizontal-stretch: 1;}Action {text: "交换";min-height: 18px;min-width: 36px;enabled: !UiData.active;clicked => {UiData.action("swap","");}}}
-                HorizontalLayout {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.source-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.source-index;enabled: !UiData.active;selected(value) => {UiData.action("source",value);}}}
+                Row {height: 18px;padding-left: 48px;Muted {text: "主音频";horizontal-stretch: 1;}Action {text: "交换";min-height: 18px;min-width: 36px;enabled: !UiData.active;clicked => {UiData.action("swap","");}}}
+                Row {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.source-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.source-index;enabled: !UiData.active;selected(value) => {UiData.action("source",value);}}}
                 Rectangle {height: 1px;background: UiData.dark ? #3b454d : #dfe5e9;}
-                HorizontalLayout {height: 18px;padding-left: 40px;Muted {text: "副音频";horizontal-stretch: 1;}Action {text: "刷新";min-height: 18px;min-width: 36px;clicked => {UiData.action("refresh","");}}}
-                HorizontalLayout {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.target-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.target-index;selected(value) => {UiData.action("target",value);}}}
+                Row {height: 18px;padding-left: 48px;Muted {text: "副音频";horizontal-stretch: 1;}Action {text: "刷新";min-height: 18px;min-width: 36px;clicked => {UiData.action("refresh","");}}}
+                Row {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.target-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.target-index;selected(value) => {UiData.action("target",value);}}}
             }
         }
         VerticalLayout {spacing: 2px;
-            HorizontalLayout {height: 24px;Label {text: "副音频音量";font-weight: 600;horizontal-stretch: 1;}Muted {text: "\{round(UiData.gain*10)/10} %";color: #238c7a;}Action {text: UiData.paused ? "恢复补声" : "静音对比";min-width: 74px;min-height: 24px;clicked => {UiData.action("pause","");}}}
+            Row {height: 24px;Label {text: "副音频音量";font-weight: 600;horizontal-stretch: 1;}Muted {text: "\{round(UiData.gain*10)/10} %";color: #238c7a;}Action {text: UiData.paused ? "恢复补声" : "静音对比";min-width: 74px;min-height: 24px;clicked => {UiData.action("pause","");}}}
             Fader {value: UiData.gain;step: 0.1;label: "副音频音量";edited(value) => {UiData.setting("gain","\{value}");}}
-            HorizontalLayout {height: 14px;spacing: 8px;Muted {text: "来源";}Meter {level: UiData.input-level;horizontal-stretch: 1;}Muted {text: "补声";}Meter {level: UiData.output-level;horizontal-stretch: 1;}}
+            Row {height: 14px;spacing: 8px;Muted {text: "来源";}Meter {level: UiData.input-level;horizontal-stretch: 1;}Muted {text: "补声";}Meter {level: UiData.output-level;horizontal-stretch: 1;}}
         }
-        VerticalLayout {spacing: 2px;
-            HorizontalLayout {height: 24px;Label {text: "空间补充";font-weight: 600;horizontal-stretch: 1;}Muted {text: "主体保留 \{round(UiData.body)} %";}}
-            Fader {minimum: UiData.minimum-body;value: UiData.body;label: "主体保留：向左减少居中人声和乐器";edited(value) => {UiData.setting("body","\{value}");}}
-            HorizontalLayout {height: 16px;Muted {text: "主体更少 · 环境更突出";horizontal-stretch: 1;}Muted {text: "主体更多";}}
+        VerticalLayout {spacing: 8px;
+            Row {height: 34px;spacing: 6px;
+                Action {text: "空间补充";filled: true;selected: !UiData.reverb;horizontal-stretch: 1;clicked => {UiData.setting("effect_mode","\"space\"");}}
+                Action {text: "副路混响";filled: true;selected: UiData.reverb;horizontal-stretch: 1;clicked => {UiData.setting("effect_mode","\"reverb\"");}}
+            }
+            if !UiData.reverb: VerticalLayout {spacing: 2px;
+                Row {height: 22px;Muted {text: "主体保留";horizontal-stretch: 1;}Muted {text: "\{round(UiData.body)} %";}}
+                Fader {minimum: UiData.minimum-body;value: UiData.body;label: "主体保留";edited(value) => {UiData.setting("body","\{value}");}}
+                Row {height: 16px;Muted {text: "主体更少 · 环境更突出";horizontal-stretch: 1;}Muted {text: "主体更多";}}
+            }
+            if UiData.reverb: VerticalLayout {spacing: 2px;
+                ParameterRow {caption: "空间大小";value: UiData.reverb-size;display: "\{round(UiData.reverb-size)} %";edited(v) => {UiData.setting("reverb_size","\{v}");}}
+                ParameterRow {caption: "尾音时长";minimum: 0.2;maximum: 4;step: 0.1;value: UiData.reverb-decay;display: "\{round(UiData.reverb-decay*10)/10} s";edited(v) => {UiData.setting("reverb_decay","\{round(v*10)/10}");}}
+                ParameterRow {caption: "明暗";value: UiData.reverb-brightness;display: "\{round(UiData.reverb-brightness)} %";edited(v) => {UiData.setting("reverb_brightness","\{v}");}}
+                Muted {height: 18px;text: "副路只播放尾音 · 明暗向右更明亮";}
+            }
         }
         VerticalLayout {spacing: 8px;vertical-stretch: 1;
-            HorizontalLayout {height: 24px;spacing: 12px;Label {text: "声音处理";font-weight: 600;horizontal-stretch: 1;}CheckBox {text: "均衡器";checked: UiData.eq-on;toggled => {UiData.setting("eq_enabled",self.checked ? "true" : "false");}}CheckBox {text: "多段过滤";checked: UiData.band-on;toggled => {UiData.setting("band_enabled",self.checked ? "true" : "false");}}}
-            Image {source: UiData.mini-chart;image-fit: fill;min-height: 140px;vertical-stretch: 1;TouchArea {mouse-cursor: pointer;clicked => {UiData.action("details","");}}}
+            Row {height: 24px;spacing: 12px;Label {text: UiData.reverb ? "混响前处理" : "声音处理";font-weight: 600;horizontal-stretch: 1;}CheckBox {text: "均衡器";checked: UiData.eq-on;toggled => {UiData.setting("eq_enabled",self.checked ? "true" : "false");}}CheckBox {text: "多段过滤";checked: UiData.band-on;toggled => {UiData.setting("band_enabled",self.checked ? "true" : "false");}}}
+            Image {source: UiData.mini-chart;image-fit: fill;min-height: 120px;vertical-stretch: 1;TouchArea {mouse-cursor: pointer;clicked => {UiData.action("details","");}}}
             Rectangle {height: 40px;background: UiData.dark ? #242c32 : white;border-width: 1px;border-color: UiData.dark ? #3b454d : #dfe5e9;border-radius: 6px;
-                HorizontalLayout {padding-left: 12px;padding-right: 12px;spacing: 10px;Image {source: UiData.sliders-icon;width: 22px;height: 22px;}Label {text: "详细调节";font-weight: 600;horizontal-stretch: 1;}Muted {text: "EQ · 频段 · 预设";}Muted {text: "›";font-size: 22px;}}
+                Row {padding-left: 12px;padding-right: 12px;spacing: 10px;Image {source: UiData.sliders-icon;width: 22px;height: 22px;}Label {text: "详细调节";font-weight: 600;horizontal-stretch: 1;}Muted {text: "EQ · 频段 · 预设";}Muted {text: "›";font-size: 22px;}}
                 TouchArea {mouse-cursor: pointer;clicked => {UiData.action("details","");}}
             }
         }
-        HorizontalLayout {height: 34px;spacing: 8px;Presets {horizontal-stretch: 1;}Action {text: "新增预设";clicked => {UiData.action("add-preset","");}}}
+        Row {height: 34px;spacing: 8px;Presets {horizontal-stretch: 1;}Action {text: "新增预设";clicked => {UiData.action("add-preset","");}}}
         if UiData.issue != "": Text {text: UiData.issue;color: UiData.dark ? #ffb6aa : #a52c20;font-size: 11px;wrap: word-wrap;max-height: 40px;}
         Rectangle {height: 1px;background: UiData.dark ? #3b454d : #dfe5e9;}
-        HorizontalLayout {height: 22px;Muted {text: UiData.queue;horizontal-stretch: 1;}Action {text: "关于";min-height: 22px;min-width: 36px;clicked => {UiData.action("about","");}}Action {text: "收至托盘";min-height: 22px;min-width: 64px;clicked => {UiData.action("tray","");}}}
+        Row {height: 22px;Muted {text: UiData.queue;horizontal-stretch: 1;}Action {text: "关于";min-height: 22px;min-width: 36px;clicked => {UiData.action("about","");}}Action {text: "收至托盘";min-height: 22px;min-width: 64px;clicked => {UiData.action("tray","");}}}
     }
 }
 component EqPlot inherits Rectangle {
@@ -189,17 +231,22 @@ export component EditorWindow inherits Window {
     default-font-family: "Microsoft YaHei UI";default-font-size: 12px;
     in-out property <ColorScheme> scheme <=> Palette.color-scheme;
     VerticalLayout {padding: 20px;spacing: 14px;
-        HorizontalLayout {height: 40px;spacing: 12px;Image {source: UiData.sliders-icon;width: 24px;height: 24px;}Label {text: "声音调节";font-size: 18px;font-weight: 600;horizontal-stretch: 1;}Presets {min-width: 190px;}Action {text: "新增预设";filled: true;min-width: 88px;clicked => {UiData.action("add-preset","");}}Action {text: "删除预设";filled: true;min-width: 88px;enabled: UiData.preset-index>=0;clicked => {UiData.action("delete-preset","");}}Action {text: "更多";filled: true;clicked => {more.show();}}
+        Row {height: 40px;spacing: 12px;Image {source: UiData.sliders-icon;width: 24px;height: 24px;}Label {text: "声音调节";font-size: 18px;font-weight: 600;horizontal-stretch: 1;}Presets {min-width: 190px;}Action {text: "新增预设";filled: true;min-width: 88px;clicked => {UiData.action("add-preset","");}}Action {text: "删除预设";filled: true;min-width: 88px;enabled: UiData.preset-index>=0;clicked => {UiData.action("delete-preset","");}}Action {text: "更多";filled: true;clicked => {more.show();}}
             more := PopupWindow {width: 158px;height: 136px;y: 40px; Rectangle {background: #29343c;width: parent.width;height: parent.height;}
-                VerticalLayout {padding: 6px;spacing: 2px;Action {text: "导入预设…";clicked => {more.close();UiData.action("import","");}}Action {text: "导出预设…";clicked => {more.close();UiData.action("export","");}}Action {text: "数字延迟测量";clicked => {more.close();UiData.action("latency","");}}}
+                VerticalLayout {padding: 6px;spacing: 2px;Action {text: "导入预设…";clicked => {more.close();UiData.action("import","");}}Action {text: "导出预设…";clicked => {more.close();UiData.action("export","");}}Action {text: "数字延迟测量";enabled: !UiData.reverb;clicked => {more.close();UiData.action("latency","");}}}
             }
         }
         Rectangle {height: 1px;background: #3b454d;}
-        HorizontalLayout {height: 22px;spacing: 16px;
-            Text {text: "━  均衡曲线";color: #ffc451;font-size: 11px;}Text {text: "┄  过滤后";color: #b9af7c;font-size: 11px;}Text {text: "━  来源频谱";color: #9baeba;font-size: 11px;}Text {text: "━  补声频谱";color: #53d2bd;font-size: 11px;}Rectangle {horizontal-stretch: 1;}Action {text: "本机音效…";min-width: 90px;min-height: 22px;clicked => {UiData.action("effects","");}}
+        Row {height: 22px;spacing: 16px;
+            Legend {caption: "均衡曲线";ink: #ffc451;}
+            Legend {caption: "过滤后";ink: #b9af7c;dashed: true;}
+            Legend {caption: "来源频谱";ink: #9baeba;}
+            Legend {caption: "补声频谱";ink: #53d2bd;}
+            Rectangle {horizontal-stretch: 1;}
+            Action {text: "本机音效…";min-width: 90px;min-height: 22px;clicked => {UiData.action("effects","");}}
         }
         EqPlot {min-height: 220px;preferred-height: 300px;vertical-stretch: 1;}
-        HorizontalLayout {height: 30px;CheckBox {text: "十段均衡器";checked: UiData.eq-on;toggled => {UiData.setting("eq_enabled",self.checked ? "true" : "false");}}Rectangle {horizontal-stretch: 1;}Action {text: "增益归零";clicked => {UiData.action("eq-reset","");}}Muted {text: UiData.headroom;}}
+        Row {height: 30px;CheckBox {text: "十段均衡器";checked: UiData.eq-on;toggled => {UiData.setting("eq_enabled",self.checked ? "true" : "false");}}Rectangle {horizontal-stretch: 1;}Action {text: "增益归零";clicked => {UiData.action("eq-reset","");}}Muted {text: UiData.headroom;}}
         Rectangle {height: 62px;background: transparent;
             for point[index] in UiData.eq-points: VerticalLayout {x: (38/900+point.position*830/900)*parent.width - 34px;width: 68px;spacing: 8px;
                 Muted {text: point.frequency;horizontal-alignment: center;height: 18px;}
@@ -207,20 +254,20 @@ export component EditorWindow inherits Window {
             }
         }
         Rectangle {height: 1px;background: #3b454d;}
-        HorizontalLayout {height: 28px;spacing: 12px;CheckBox {text: "多段过滤";checked: UiData.band-on;toggled => {UiData.setting("band_enabled",self.checked ? "true" : "false");}}Muted {text: "\{UiData.bands.length} / 8 段";horizontal-stretch: 1;}Action {text: "新增频段";enabled: UiData.bands.length<8;clicked => {UiData.action("band-add","");}}}
-        ScrollView {height: 116px;
+        Row {height: 28px;spacing: 12px;CheckBox {text: "多段过滤";checked: UiData.band-on;toggled => {UiData.setting("band_enabled",self.checked ? "true" : "false");}}Muted {text: "\{UiData.bands.length} / 8 段";horizontal-stretch: 1;}Action {text: "新增频段";enabled: UiData.bands.length<8;clicked => {UiData.action("band-add","");}}}
+        ScrollView {height: root.height < 740px ? 84px : 116px;
             VerticalLayout {padding: 2px;spacing: 8px;
-                for row[index] in UiData.bands: HorizontalLayout {height: 32px;spacing: 8px;
-                    CheckBox {checked: row.enabled;toggled => {UiData.band-edit(index,"enabled",self.checked ? "true" : "false");}}
-                    Muted {text: "下限";}NumEdit {value: row.low;label: "频段下限 Hz";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"low",value);}}
-                    Muted {text: "上限";}NumEdit {value: row.high;label: "频段上限 Hz";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"high",value);}}
-                    Muted {text: "Hz";}NumEdit {value: row.gain;label: "频段增益 dB";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"gain_db",value);}}
-                    Muted {text: "dB";}Action {text: "删除";min-width: 48px;enabled: UiData.bands.length>1;clicked => {UiData.action("band-delete","\{index}");}}
+                for row[index] in UiData.bands: Row {height: 32px;spacing: 8px;
+                    CheckBox {width: 24px;checked: row.enabled;toggled => {UiData.band-edit(index,"enabled",self.checked ? "true" : "false");}}
+                    Muted {text: "下限";width: 28px;}NumEdit {value: row.low;label: "频段下限 Hz";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"low",value);}}
+                    Muted {text: "Hz";width: 18px;}Muted {text: "上限";width: 28px;}NumEdit {value: row.high;label: "频段上限 Hz";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"high",value);}}
+                    Muted {text: "Hz";width: 18px;}Muted {text: "增益";width: 28px;}NumEdit {value: row.gain;label: "频段增益 dB";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"gain_db",value);}}
+                    Muted {text: "dB";width: 18px;}Action {text: "删除";min-width: 48px;enabled: UiData.bands.length>1;clicked => {UiData.action("band-delete","\{index}");}}
                 }
             }
         }
         if UiData.issue != "": Text {text: UiData.issue;color: #ffb6aa;font-size: 11px;wrap: word-wrap;max-height: 34px;}
-        HorizontalLayout {height: 30px;Muted {text: "副音频 \{round(UiData.gain*10)/10} %";horizontal-stretch: 1;}Action {text: UiData.paused ? "恢复补声" : "静音对比";filled: true;min-width: 90px;clicked => {UiData.action("pause","");}}}
+        Row {height: 30px;Muted {text: UiData.reverb ? "副路混响 · 尾音 \{round(UiData.reverb-decay*10)/10} s" : "副音频 \{round(UiData.gain*10)/10} %";horizontal-stretch: 1;}Action {text: UiData.paused ? "恢复补声" : "静音对比";filled: true;min-width: 90px;clicked => {UiData.action("pause","");}}}
     }
 }
 export component InfoWindow inherits Window {

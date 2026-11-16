@@ -164,6 +164,18 @@ Complex Dsp::band_response(double hz) const {
 void Processor::update(std::shared_ptr<Dsp> d) {
     if (d == current)
         return;
+    bool wet = d->cfg["effect_mode"] == "reverb";
+    if (wet) {
+        bool reset = !reverb;
+        if (reset) reverb = std::make_unique<Reverb>();
+        reverb->configure(d->cfg, reset);
+    }
+    wet_target = wet ? 1. : 0.;
+    if (!current) wet_mix = wet_target;
+    else if (d->cfg["effect_mode"] != current->cfg["effect_mode"]) {
+        wet_ramp = SpatialRampFrames;
+        wet_step = (wet_target-wet_mix)/wet_ramp;
+    }
     if (!current || d->cfg["gains"] != current->cfg["gains"])
         eq = d->eq;
     if (!current || d->cfg["bands"] != current->cfg["bands"] ||
@@ -207,8 +219,17 @@ void Processor::process(std::vector<double> &packet, bool paused) {
                 mid = target_mid;
         }
         double m = (v[0] + v[1]) * .5 * (1 - mid);
-        packet[i] = (v[0] - m) * gain;
-        packet[i + 1] = (v[1] - m) * gain;
+        std::array<double,2> wet{};
+        if (reverb) wet=reverb->tick(v[0],v[1]);
+        if (wet_ramp) {
+            wet_mix += wet_step;
+            if (!--wet_ramp) {
+                wet_mix=wet_target;
+                if (wet_target==0) reverb.reset();
+            }
+        }
+        packet[i] = ((v[0]-m)*(1-wet_mix)+wet[0]*wet_mix)*gain;
+        packet[i+1] = ((v[1]-m)*(1-wet_mix)+wet[1]*wet_mix)*gain;
     }
 }
 Resampler::Resampler(int source, int target) {

@@ -420,8 +420,8 @@ class Ui {
             } else if (c == "close-info")
                 info->hide();
             else if (c == "about")
-                dialog("关于 DualTone", "DualTone 0.2.0 · 原生轻量版\nC++ + Slint · "
-                                        "WASAPI\n\n主音频直出，副音频独立处理。\n配置与 JSON CLI 兼容 "
+                dialog("关于 DualTone", "DualTone 0.3.0 · 原生轻量版\nC++ + Slint · "
+                                        "WASAPI\n\n主音频直出，副音频独立处理。\n支持旧配置迁移与 JSON CLI "
                                         "v0.1。\n\nhttps://github.com/Wu-Tea/DualTone");
             else if (c == "eq-reset")
                 host.command("set", {{"gains", std::vector<double>(10, 0)}});
@@ -437,10 +437,10 @@ class Ui {
                 auto p = file_dialog(editor->window().win32_hwnd(), c == "export");
                 if (p) {
                     if (c == "export")
-                        save_json(*p, {{"version", 2}, {"settings", host.command("get")}});
+                        save_json(*p, {{"version", ConfigVersion}, {"settings", host.command("get")}});
                     else {
                         auto doc = read_json(*p);
-                        if (doc.at("version") != 1 && doc.at("version") != 2)
+                        if (doc.at("version") < 1 || doc.at("version") > ConfigVersion)
                             throw std::runtime_error("不支持的预设版本");
                         auto cfg = validate(doc.at("settings"));
                         cfg.erase("source_id");
@@ -553,6 +553,10 @@ class Ui {
             auto presets = model(names);
             for (auto *g : {&main->global<UiData>(), &editor->global<UiData>()}) {
                 g->set_gain(cfg["gain"]);
+                g->set_reverb(cfg["effect_mode"] == "reverb");
+                g->set_reverb_size(cfg["reverb_size"]);
+                g->set_reverb_decay(cfg["reverb_decay"]);
+                g->set_reverb_brightness(cfg["reverb_brightness"]);
                 g->set_body(
                     float(100 * pow(10., -MidCutDb * cfg["spatial_strength"].get<double>() / 100 / 20)));
                 g->set_eq_on(cfg["eq_enabled"]);
@@ -613,7 +617,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         fs::path dir = executable_dir() / L"data", shot;
         double quit_after = 0;
         bool details = false, dark = false, start = false;
-        int width = 0;
+        int width = 0, editor_width = 0, editor_height = 0;
         for (int i = 1; i < argc; i++) {
             std::wstring a = argv[i];
             if (a == L"--data-dir" && i + 1 < argc)
@@ -630,11 +634,18 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                 quit_after = std::stod(argv[++i]);
             else if (a == L"--width" && i + 1 < argc)
                 width = std::stoi(argv[++i]);
+            else if (a == L"--editor-width" && i + 1 < argc)
+                editor_width = std::stoi(argv[++i]);
+            else if (a == L"--editor-height" && i + 1 < argc)
+                editor_height = std::stoi(argv[++i]);
         }
         LocalFree(argv);
         Ui ui(dir, dark);
         if (width)
-            ui.main->window().set_size(slint::LogicalSize{{float(width), 760.f}});
+            ui.main->window().set_size(slint::LogicalSize{{float(width), 800.f}});
+        if (editor_width || editor_height)
+            ui.editor->window().set_size(slint::LogicalSize{{float(editor_width ? editor_width : 940),
+                                                            float(editor_height ? editor_height : 760)}});
         if (details)
             ui.action("details", "");
         if (start)
@@ -649,7 +660,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                           {{"source_index", ui.main->global<UiData>().get_source_index()},
                            {"target_index", ui.main->global<UiData>().get_target_index()},
                            {"preset_index", ui.main->global<UiData>().get_preset_index()},
-                           {"editor_preset_index", ui.editor->global<UiData>().get_preset_index()}});
+                           {"editor_preset_index", ui.editor->global<UiData>().get_preset_index()},
+                           {"reverb", ui.main->global<UiData>().get_reverb()},
+                           {"reverb_size", ui.main->global<UiData>().get_reverb_size()},
+                           {"reverb_decay", ui.main->global<UiData>().get_reverb_decay()}});
                 if (details) {
                     auto p = shot.parent_path() / (shot.stem().wstring() + L"-details.png");
                     snapshot(ui.editor->window(), p);
