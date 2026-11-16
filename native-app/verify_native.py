@@ -54,6 +54,22 @@ class NativeParity(unittest.TestCase):
     def test_existing_pipe_namespace(self):
         p=str((ROOT/'qa/中文配置').resolve())
         self.assertEqual(driver(dict(command='pipe',directory=p))['result'],'\\\\.\\pipe\\'+pipe_name(p))
+    def test_preset_ui_selection_is_owned_by_configuration(self):
+        # A ComboBox model update must not turn "no match" into preset zero:
+        # the same index controls the delete action in both windows.
+        (ROOT/'qa').mkdir(exist_ok=True)
+        for kind,expected in [('empty',-1),('matched',0),('modified',-1)]:
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory(dir=ROOT/'qa') as temp:
+                directory=Path(temp);current=validate({});preset=validate({})
+                if kind=='modified':current['gain']=9
+                presets={} if kind=='empty' else {'我的预设':preset}
+                (directory/'settings.json').write_text(json.dumps(dict(version=2,current=current,presets=presets)),encoding='utf-8')
+                shot=directory/'ui.png'
+                p=subprocess.run([str(ROOT/'dist/DualTone.exe'),'--data-dir',temp,'--details','--screenshot',str(shot),'--quit-after','2.2'],creationflags=subprocess.CREATE_NO_WINDOW,timeout=15)
+                self.assertEqual(p.returncode,0)
+                state=json.loads(shot.with_suffix('.json').read_text(encoding='utf-8'))
+                self.assertEqual(state['preset_index'],expected,state)
+                self.assertEqual(state['editor_preset_index'],expected,state)
     def test_cli_gui_shared_state(self):
         (ROOT/'qa').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT/'qa') as temp:

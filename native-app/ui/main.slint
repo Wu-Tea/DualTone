@@ -111,8 +111,16 @@ component NumEdit inherits Rectangle {
 }
 component Presets inherits Rectangle {
     background: transparent;min-height: 34px;
-    ComboBox { width: parent.width;height: parent.height; model: UiData.presets; current-index <=> UiData.preset-index; selected(value) => {UiData.action("preset",value);} }
-    if UiData.preset-index < 0: Muted {x: 12px;width: parent.width - 40px;height: parent.height;text: UiData.preset-placeholder;}
+    // The host owns the matched preset. ComboBox normalizes an empty selection to
+    // zero when its model changes; that must not select or enable deleting a preset.
+    in property <int> matched-index: UiData.preset-index;
+    changed matched-index => {picker.current-index=root.matched-index;}
+    picker := ComboBox { width: parent.width;height: parent.height; model: UiData.presets; current-index: root.matched-index; selected(value) => {UiData.action("preset",value);self.current-index=root.matched-index;} }
+    if root.matched-index < 0: Rectangle {
+        x: 2px;y: 2px;width: parent.width - 35px;height: parent.height - 4px;
+        background: UiData.dark ? #2b353c : #ffffff;
+        Muted {x: 10px;width: parent.width - 10px;height: parent.height;text: UiData.preset-placeholder;}
+    }
 }
 export component MainWindow inherits Window {
     title: "DualTone"; preferred-width: 440px;preferred-height: 760px;min-width: 420px;min-height: 760px;

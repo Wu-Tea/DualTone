@@ -1,4 +1,4 @@
-# DualTone v0.2.0 · 原生轻量预览版
+# DualTone v0.2.1 · 原生轻量预览版
 
 将 v0.1 的 Python / Qt / NumPy / SciPy 运行环境替换为 C++ 原生音频核心和 Slint Fluent UI，保留 GUI、JSON CLI、旧配置与预设格式。
 

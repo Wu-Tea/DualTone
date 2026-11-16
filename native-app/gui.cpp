@@ -643,6 +643,13 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         if (!shot.empty())
             capture.start(slint::TimerMode::SingleShot, std::chrono::milliseconds(1500), [&] {
                 snapshot(ui.main->window(), shot);
+                auto state_path = shot;
+                state_path.replace_extension("json");
+                save_json(state_path,
+                          {{"source_index", ui.main->global<UiData>().get_source_index()},
+                           {"target_index", ui.main->global<UiData>().get_target_index()},
+                           {"preset_index", ui.main->global<UiData>().get_preset_index()},
+                           {"editor_preset_index", ui.editor->global<UiData>().get_preset_index()}});
                 if (details) {
                     auto p = shot.parent_path() / (shot.stem().wstring() + L"-details.png");
                     snapshot(ui.editor->window(), p);

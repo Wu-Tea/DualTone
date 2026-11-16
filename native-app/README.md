@@ -54,7 +54,7 @@ v0.2 完整 ZIP 约 15.3 MiB，解压约 31.9 MiB；构建打包脚本检查 ZIP
 ```powershell
 .\bootstrap.ps1
 cmd /c build.cmd
-.\package.ps1 -Version 0.2.0
+.\package.ps1 -Version 0.2.1
 ```
 
 bootstrap 仅下载依赖到 `vendor`，可使用已有 7-Zip 或 Bandizip 解包官方 SDK；也可通过 `-SlintSdkDirectory 路径` 指定已解压 SDK。不执行 SDK 安装程序。运行版无需这些构建工具。
