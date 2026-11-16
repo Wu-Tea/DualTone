@@ -1,0 +1,184 @@
+{
+  "cpu_denominator_logical_processors": 20,
+  "warmup_seconds": 4,
+  "sample_seconds_per_run": 15,
+  "completed_runs": 14,
+  "conditions": "Current settings, USB DAC 96 kHz to DP monitor 48 kHz, direct main output. Same repeating low-level probe mixed with ongoing user playback; alternating launches, not identical isolated music content.",
+  "groups": {
+    "main": {
+      "python": {
+        "runs": 3,
+        "cpu_percent_total": {
+          "mean": 1.0060932193760235,
+          "min": 0.950541195837183,
+          "max": 1.116844681009233
+        },
+        "working_set_mib": {
+          "mean": 242.6951388888889,
+          "min": 241.82395833333334,
+          "max": 243.21588541666668
+        },
+        "private_commit_mib": {
+          "mean": 1470.275434027778,
+          "min": 1469.4,
+          "max": 1470.71640625
+        }
+      },
+      "native": {
+        "runs": 3,
+        "cpu_percent_total": {
+          "mean": 0.34259312837911404,
+          "min": 0.2896067690164165,
+          "max": 0.4226063152810496
+        },
+        "working_set_mib": {
+          "mean": 236.74114583333335,
+          "min": 236.59895833333334,
+          "max": 236.97291666666666
+        },
+        "private_commit_mib": {
+          "mean": 262.56258680555555,
+          "min": 261.3403645833333,
+          "max": 264.08046875
+        }
+      }
+    },
+    "details": {
+      "python": {
+        "runs": 2,
+        "cpu_percent_total": {
+          "mean": 1.8630806069170296,
+          "min": 1.8497851385481403,
+          "max": 1.876376075285919
+        },
+        "working_set_mib": {
+          "mean": 258.11484375,
+          "min": 258.08125,
+          "max": 258.1484375
+        },
+        "private_commit_mib": {
+          "mean": 1506.0805989583332,
+          "min": 1505.94921875,
+          "max": 1506.2119791666667
+        }
+      },
+      "native": {
+        "runs": 2,
+        "cpu_percent_total": {
+          "mean": 0.7547151640188728,
+          "min": 0.7498785018924068,
+          "max": 0.7595518261453389
+        },
+        "working_set_mib": {
+          "mean": 285.49440104166666,
+          "min": 285.29791666666665,
+          "max": 285.6908854166667
+        },
+        "private_commit_mib": {
+          "mean": 343.26471354166665,
+          "min": 342.92786458333336,
+          "max": 343.6015625
+        }
+      }
+    },
+    "headless": {
+      "python": {
+        "runs": 2,
+        "cpu_percent_total": {
+          "mean": 0.30256707646655495,
+          "min": 0.29994511260945955,
+          "max": 0.30518904032365035
+        },
+        "working_set_mib": {
+          "mean": 137.986328125,
+          "min": 137.80078125,
+          "max": 138.171875
+        },
+        "private_commit_mib": {
+          "mean": 1349.83203125,
+          "min": 1349.69921875,
+          "max": 1349.96484375
+        }
+      },
+      "native": {
+        "runs": 2,
+        "cpu_percent_total": {
+          "mean": 0.16518341921341095,
+          "min": 0.1394560800665816,
+          "max": 0.1909107583602403
+        },
+        "working_set_mib": {
+          "mean": 19.031901041666664,
+          "min": 19.025,
+          "max": 19.038802083333334
+        },
+        "private_commit_mib": {
+          "mean": 3.171744791666667,
+          "min": 3.16875,
+          "max": 3.1747395833333334
+        }
+      }
+    }
+  },
+  "latency": {
+    "python": {
+      "total": 6,
+      "valid": 6,
+      "values_ms": [
+        20.016,
+        20.088,
+        16.645,
+        16.702,
+        12.954,
+        13.005
+      ],
+      "median_ms": 16.6735,
+      "mean_ms": 16.568333333333335,
+      "min_ms": 12.954,
+      "max_ms": 20.088,
+      "min_correlation": 0.9994
+    },
+    "native": {
+      "total": 6,
+      "valid": 6,
+      "values_ms": [
+        5.285,
+        5.331,
+        8.258,
+        8.312,
+        9.786,
+        9.821
+      ],
+      "median_ms": 8.285,
+      "mean_ms": 7.798833333333333,
+      "min_ms": 5.285,
+      "max_ms": 9.821,
+      "min_correlation": 1.0
+    }
+  },
+  "improvements": {
+    "main": {
+      "cpu_percent_total": 65.94817241770207,
+      "working_set_mib": 2.453280721984885,
+      "private_commit_mib": 82.14194560224183
+    },
+    "details": {
+      "cpu_percent_total": 59.491008536246156,
+      "working_set_mib": -10.60750977893603,
+      "private_commit_mib": 77.20807812151072
+    },
+    "headless": {
+      "cpu_percent_total": 45.40601669472457,
+      "working_set_mib": 86.20740090683047,
+      "private_commit_mib": 99.76502670567615
+    }
+  },
+  "defaults_unchanged": true,
+  "user_config_unchanged": true,
+  "latency_median_reduction_ms": 8.3885,
+  "latency_median_reduction_percent": 50.31037274717366,
+  "binary_sha256": {
+    "python": "f377f34e19fc3191e9f4916a7e1c636d500689712b71d6b645b15d1cb3b456e8",
+    "native": "d0b9726cf05353b8285dbef534c981b2a7262a86ec635432b45ec318e3cbc791"
+  }
+}

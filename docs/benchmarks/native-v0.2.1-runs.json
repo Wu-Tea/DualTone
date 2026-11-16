@@ -1,0 +1,362 @@
+[
+  {
+    "mode": "main",
+    "version": "python",
+    "seconds": 15.109531599999173,
+    "cpu_percent_total": 1.116844681009233,
+    "working_set_mib": 243.04557291666666,
+    "private_commit_mib": 1470.7098958333333,
+    "latency": [
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 20.016,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.02950000067357926,
+          "target": 0.019099999699392564
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      },
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 20.088,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.017300000545219726,
+          "target": 0.018799999234033957
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      }
+    ]
+  },
+  {
+    "mode": "main",
+    "version": "native",
+    "seconds": 15.101818499999354,
+    "cpu_percent_total": 0.31556630083987597,
+    "working_set_mib": 236.97291666666666,
+    "private_commit_mib": 261.3403645833333,
+    "latency": [
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 5.285,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.05290000059176257,
+          "target": 0.02010000003792832
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      },
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 5.331,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.03769999944779577,
+          "target": 0.02029999974183759
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      }
+    ]
+  },
+  {
+    "mode": "main",
+    "version": "native",
+    "seconds": 15.106691099999807,
+    "cpu_percent_total": 0.2896067690164165,
+    "working_set_mib": 236.59895833333334,
+    "private_commit_mib": 264.08046875,
+    "latency": [
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 8.258,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.029200000208220653,
+          "target": 0.02029999974183759
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      },
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 8.312,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.025200000673067033,
+          "target": 0.018900000432040334
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      }
+    ]
+  },
+  {
+    "mode": "main",
+    "version": "python",
+    "seconds": 15.122963699999673,
+    "cpu_percent_total": 0.950541195837183,
+    "working_set_mib": 243.21588541666668,
+    "private_commit_mib": 1470.71640625,
+    "latency": [
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 16.645,
+        "correlation": 0.9997,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.028599999277503438,
+          "target": 0.019199998641852498
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      },
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 16.702,
+        "correlation": 0.9994,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.02260000088426771,
+          "target": 0.0204999998823039
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      }
+    ]
+  },
+  {
+    "mode": "main",
+    "version": "python",
+    "seconds": 15.117356200000359,
+    "cpu_percent_total": 0.9508937812816542,
+    "working_set_mib": 241.82395833333334,
+    "private_commit_mib": 1469.4,
+    "latency": [
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 12.954,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.03009999978530707,
+          "target": 0.031100000560399868
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      },
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 13.005,
+        "correlation": 0.9998,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.036299999701441474,
+          "target": 0.02030000017839463
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      }
+    ]
+  },
+  {
+    "mode": "main",
+    "version": "native",
+    "seconds": 15.158907399998498,
+    "cpu_percent_total": 0.4226063152810496,
+    "working_set_mib": 236.6515625,
+    "private_commit_mib": 262.2669270833333,
+    "latency": [
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 9.786,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.0192000004608419,
+          "target": 0.019800000009126753
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      },
+      {
+        "method": "WASAPI QPC + matched-DSP correlation",
+        "reliable": true,
+        "transport_lag_ms": 9.821,
+        "correlation": 1.0,
+        "discontinuities": {
+          "source": 0,
+          "target": 0
+        },
+        "timestamp_errors": {
+          "source": 0,
+          "target": 0
+        },
+        "max_timestamp_gap_ms": {
+          "source": 0.029099999446771316,
+          "target": 0.019600000305217483
+        },
+        "note": "Digital transport estimate; excludes matched filter group delay and unmeasured acoustic/device processing."
+      }
+    ]
+  },
+  {
+    "mode": "details",
+    "version": "native",
+    "seconds": 15.119935999999143,
+    "cpu_percent_total": 0.7595518261453389,
+    "working_set_mib": 285.29791666666665,
+    "private_commit_mib": 343.6015625,
+    "latency": []
+  },
+  {
+    "mode": "details",
+    "version": "python",
+    "seconds": 15.119999300000927,
+    "cpu_percent_total": 1.8497851385481403,
+    "working_set_mib": 258.1484375,
+    "private_commit_mib": 1505.94921875,
+    "latency": []
+  },
+  {
+    "mode": "details",
+    "version": "python",
+    "seconds": 15.11390780000147,
+    "cpu_percent_total": 1.876376075285919,
+    "working_set_mib": 258.08125,
+    "private_commit_mib": 1506.2119791666667,
+    "latency": []
+  },
+  {
+    "mode": "details",
+    "version": "native",
+    "seconds": 15.10661390000132,
+    "cpu_percent_total": 0.7498785018924068,
+    "working_set_mib": 285.6908854166667,
+    "private_commit_mib": 342.92786458333336,
+    "latency": []
+  },
+  {
+    "mode": "headless",
+    "version": "python",
+    "seconds": 15.106930599999032,
+    "cpu_percent_total": 0.29994511260945955,
+    "working_set_mib": 137.80078125,
+    "private_commit_mib": 1349.69921875,
+    "latency": []
+  },
+  {
+    "mode": "headless",
+    "version": "native",
+    "seconds": 15.125729900000806,
+    "cpu_percent_total": 0.1394560800665816,
+    "working_set_mib": 19.038802083333334,
+    "private_commit_mib": 3.1747395833333334,
+    "latency": []
+  },
+  {
+    "mode": "headless",
+    "version": "native",
+    "seconds": 15.141236800000115,
+    "cpu_percent_total": 0.1909107583602403,
+    "working_set_mib": 19.025,
+    "private_commit_mib": 3.16875,
+    "latency": []
+  },
+  {
+    "mode": "headless",
+    "version": "python",
+    "seconds": 15.103343799999493,
+    "cpu_percent_total": 0.30518904032365035,
+    "working_set_mib": 138.171875,
+    "private_commit_mib": 1349.96484375,
+    "latency": []
+  }
+]
