@@ -1,0 +1,230 @@
+import { ComboBox, CheckBox, Switch, Slider, ScrollView, LineEdit, AboutSlint, Palette } from "std-widgets.slint";
+export struct BandRow { low: string, high: string, gain: string, enabled: bool }
+export struct EqPoint { frequency: string, gain: float, value: string, position: float }
+export global UiData {
+    in-out property <bool> dark: false;
+    in-out property <bool> active: false;
+    in-out property <bool> paused: false;
+    in-out property <bool> eq-on: true;
+    in-out property <bool> band-on: true;
+    in-out property <float> gain: 8;
+    in-out property <float> body: 44;
+    in-out property <float> minimum-body: 25.1189;
+    in-out property <float> input-level: 0;
+    in-out property <float> output-level: 0;
+    in-out property <string> status: "已停止";
+    in-out property <string> queue: "队列 0.0 ms";
+    in-out property <string> issue: "";
+    in-out property <string> headroom: "余量 1.0 dB";
+    in-out property <[string]> device-labels;
+    in-out property <int> source-index: 0;
+    in-out property <int> target-index: 0;
+    in-out property <image> source-icon;
+    in-out property <image> target-icon;
+    in-out property <image> logo;
+    in-out property <image> sliders-icon;
+    in-out property <[string]> presets;
+    in-out property <int> preset-index: -1;
+    in-out property <string> preset-placeholder: "尚无预设";
+    in-out property <[BandRow]> bands;
+    in-out property <[EqPoint]> eq-points;
+    in-out property <image> chart;
+    in-out property <image> mini-chart;
+    in-out property <string> dialog-title;
+    in-out property <string> dialog-text;
+    in-out property <bool> dialog-input: false;
+    callback action(string, string);
+    callback setting(string, string);
+    callback band-edit(int, string, string);
+    callback eq-edit(int, float);
+}
+component Label inherits Text {
+    color: UiData.dark ? #e4eaf0 : #18242d;
+    font-family: "Microsoft YaHei UI";
+    font-size: 12px;
+    vertical-alignment: center;
+}
+component Muted inherits Label { color: UiData.dark ? #acb9c3 : #647581; font-size: 11px; }
+component Action inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <bool> filled: false;
+    in property <bool> selected: false;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: text;
+    min-height: 34px;
+    min-width: 64px;
+    border-radius: 6px;
+    background: !enabled ? transparent : selected ? #237f6f : touch.has-hover ? (UiData.dark ? #35424b : #e6eeed) : filled ? (UiData.dark ? #29343c : #ffffff) : transparent;
+    border-width: focus.has-focus ? 2px : filled ? 1px : 0px;
+    border-color: focus.has-focus ? #237f6f : UiData.dark ? #3b454d : #dfe5e9;
+    opacity: enabled ? 1 : 0.45;
+    Label { text: root.text; horizontal-alignment: center; color: root.selected ? white : UiData.dark ? #e4eaf0 : #18242d; }
+    focus := FocusScope { enabled: root.enabled; key-pressed(event) => { if event.text == " " || event.text == "\n" {root.clicked();return accept;} return reject; } }
+    touch := TouchArea { enabled: root.enabled; mouse-cursor: pointer; clicked => {focus.focus();root.clicked();} }
+}
+component Fader inherits Rectangle {
+    in property <float> value;
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    in property <float> step: 1;
+    in property <string> label;
+    callback edited(float);
+    height: 32px;
+    accessible-role: slider;
+    accessible-label: label;
+    accessible-value: "\{value}";
+    Rectangle { x: 8px; y: 14px; width: parent.width - 16px; height: 4px; border-radius: 2px; background: UiData.dark ? #3b454d : #dce3e6;
+        Rectangle { x: 0px; width: parent.width * (root.value - root.minimum)/(root.maximum - root.minimum); height: parent.height; background: #238c7a; border-radius: 2px; }
+    }
+    Rectangle { x: 8px+(root.width - 16px)*(root.value - root.minimum)/(root.maximum - root.minimum)-8px; y: 8px; width: 16px; height: 16px; border-radius: 8px; border-width: key.has-focus ? 2px : 1px; border-color: key.has-focus ? #237f6f : #9cabb5; background: UiData.dark ? #253038 : white;
+        Rectangle { x: 5px;y: 5px;width: 6px;height: 6px;border-radius: 3px;background: #238c7a; }
+    }
+    key := FocusScope { key-pressed(event) => { if event.text==Key.LeftArrow || event.text==Key.DownArrow {root.edited(max(root.minimum,root.value - root.step));return accept;} if event.text==Key.RightArrow || event.text==Key.UpArrow {root.edited(min(root.maximum,root.value+root.step));return accept;}return reject;} }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        function update() {root.edited(clamp((self.mouse-x - 8px)/(self.width - 16px),0,1)*(root.maximum - root.minimum)+root.minimum);}
+        pointer-event(event) => {if event.kind==PointerEventKind.down {key.focus();self.update();}}
+        moved => {if self.pressed {self.update();}}
+    }
+}
+component Meter inherits Rectangle { in property <float> level; height: 4px; background: UiData.dark ? #343f47 : #dfe5e8; Rectangle {x: 0px;width: parent.width*clamp(root.level,0,1);height: 4px;background: #238c7a;} }
+component NumEdit inherits Rectangle {
+    in property <string> value;
+    in property <string> label;
+    callback submitted(string);
+    changed value => {input.text=root.value;}
+    min-height: 30px;
+    background: UiData.dark ? #171f24 : #ffffff;
+    border-color: input.has-focus ? #43aa98 : UiData.dark ? #3d4952 : #cdd6dc;
+    border-width: 1px;border-radius: 4px;
+    input := TextInput {
+        x: 4px;width: parent.width - 8px;height: parent.height;
+        text: root.value;color: UiData.dark ? #e4eaf0 : #18242d;
+        font-size: 12px;font-family: "Microsoft YaHei UI";
+        horizontal-alignment: center;vertical-alignment: center;single-line: true;
+        accessible-label: root.label;
+        accepted => {root.submitted(self.text);self.text=root.value;}
+        changed has-focus => {if !self.has-focus && self.text!=root.value {root.submitted(self.text);self.text=root.value;}}
+    }
+}
+component Presets inherits Rectangle {
+    background: transparent;min-height: 34px;
+    ComboBox { width: parent.width;height: parent.height; model: UiData.presets; current-index <=> UiData.preset-index; selected(value) => {UiData.action("preset",value);} }
+    if UiData.preset-index < 0: Muted {x: 12px;width: parent.width - 40px;height: parent.height;text: UiData.preset-placeholder;}
+}
+export component MainWindow inherits Window {
+    title: "DualTone"; preferred-width: 440px;preferred-height: 760px;min-width: 420px;min-height: 760px;
+    default-font-family: "Microsoft YaHei UI";default-font-size: 12px;
+    background: UiData.dark ? #1c2329 : #f1f4f6;
+    in-out property <ColorScheme> scheme <=> Palette.color-scheme;
+    VerticalLayout { padding: 18px;spacing: 14px;
+        HorizontalLayout { height: 34px;spacing: 12px;
+            Image {source: UiData.logo;width: 34px;height: 34px;}
+            Label {text: "DualTone";font-size: 22px;font-weight: 600;horizontal-stretch: 1;}
+            Muted {text: UiData.status;color: #238c7a;}
+            Switch {checked: UiData.active;toggled => {UiData.action("toggle","");}}
+        }
+        Rectangle {background: UiData.dark ? #242c32 : white;border-color: UiData.dark ? #3b454d : #dfe5e9;border-width: 1px;border-radius: 12px;height: 160px;
+            VerticalLayout {padding: 12px;spacing: 6px;
+                HorizontalLayout {height: 18px;padding-left: 40px;Muted {text: "主音频";horizontal-stretch: 1;}Action {text: "交换";min-height: 18px;min-width: 36px;enabled: !UiData.active;clicked => {UiData.action("swap","");}}}
+                HorizontalLayout {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.source-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.source-index;enabled: !UiData.active;selected(value) => {UiData.action("source",value);}}}
+                Rectangle {height: 1px;background: UiData.dark ? #3b454d : #dfe5e9;}
+                HorizontalLayout {height: 18px;padding-left: 40px;Muted {text: "副音频";horizontal-stretch: 1;}Action {text: "刷新";min-height: 18px;min-width: 36px;clicked => {UiData.action("refresh","");}}}
+                HorizontalLayout {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.target-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.target-index;selected(value) => {UiData.action("target",value);}}}
+            }
+        }
+        VerticalLayout {spacing: 2px;
+            HorizontalLayout {height: 24px;Label {text: "副音频音量";font-weight: 600;horizontal-stretch: 1;}Muted {text: "\{round(UiData.gain*10)/10} %";color: #238c7a;}Action {text: UiData.paused ? "恢复补声" : "静音对比";min-width: 74px;min-height: 24px;clicked => {UiData.action("pause","");}}}
+            Fader {value: UiData.gain;step: 0.1;label: "副音频音量";edited(value) => {UiData.setting("gain","\{value}");}}
+            HorizontalLayout {height: 14px;spacing: 8px;Muted {text: "来源";}Meter {level: UiData.input-level;horizontal-stretch: 1;}Muted {text: "补声";}Meter {level: UiData.output-level;horizontal-stretch: 1;}}
+        }
+        VerticalLayout {spacing: 2px;
+            HorizontalLayout {height: 24px;Label {text: "空间补充";font-weight: 600;horizontal-stretch: 1;}Muted {text: "主体保留 \{round(UiData.body)} %";}}
+            Fader {minimum: UiData.minimum-body;value: UiData.body;label: "主体保留：向左减少居中人声和乐器";edited(value) => {UiData.setting("body","\{value}");}}
+            HorizontalLayout {height: 16px;Muted {text: "主体更少 · 环境更突出";horizontal-stretch: 1;}Muted {text: "主体更多";}}
+        }
+        VerticalLayout {spacing: 8px;vertical-stretch: 1;
+            HorizontalLayout {height: 24px;spacing: 12px;Label {text: "声音处理";font-weight: 600;horizontal-stretch: 1;}CheckBox {text: "均衡器";checked: UiData.eq-on;toggled => {UiData.setting("eq_enabled",self.checked ? "true" : "false");}}CheckBox {text: "多段过滤";checked: UiData.band-on;toggled => {UiData.setting("band_enabled",self.checked ? "true" : "false");}}}
+            Image {source: UiData.mini-chart;image-fit: fill;min-height: 140px;vertical-stretch: 1;TouchArea {mouse-cursor: pointer;clicked => {UiData.action("details","");}}}
+            Rectangle {height: 40px;background: UiData.dark ? #242c32 : white;border-width: 1px;border-color: UiData.dark ? #3b454d : #dfe5e9;border-radius: 6px;
+                HorizontalLayout {padding-left: 12px;padding-right: 12px;spacing: 10px;Image {source: UiData.sliders-icon;width: 22px;height: 22px;}Label {text: "详细调节";font-weight: 600;horizontal-stretch: 1;}Muted {text: "EQ · 频段 · 预设";}Muted {text: "›";font-size: 22px;}}
+                TouchArea {mouse-cursor: pointer;clicked => {UiData.action("details","");}}
+            }
+        }
+        HorizontalLayout {height: 34px;spacing: 8px;Presets {horizontal-stretch: 1;}Action {text: "新增预设";clicked => {UiData.action("add-preset","");}}}
+        if UiData.issue != "": Text {text: UiData.issue;color: UiData.dark ? #ffb6aa : #a52c20;font-size: 11px;wrap: word-wrap;max-height: 40px;}
+        Rectangle {height: 1px;background: UiData.dark ? #3b454d : #dfe5e9;}
+        HorizontalLayout {height: 22px;Muted {text: UiData.queue;horizontal-stretch: 1;}Action {text: "关于";min-height: 22px;min-width: 36px;clicked => {UiData.action("about","");}}Action {text: "收至托盘";min-height: 22px;min-width: 64px;clicked => {UiData.action("tray","");}}}
+    }
+}
+component EqPlot inherits Rectangle {
+    background: #182125;
+    Image {source: UiData.chart;width: parent.width;height: parent.height;image-fit: fill;}
+    for point[index] in UiData.eq-points: Rectangle {
+        x: (38/900+point.position*830/900)*root.width - 7px;
+        y: (24/300+(12-point.gain)/48*252/300)*root.height - 7px;
+        width: 14px;height: 14px;border-radius: 7px;
+        background: #20292f;border-width: key.has-focus ? 3px : 2px;border-color: #ffc451;
+        accessible-role: slider;accessible-label: "\{point.frequency} Hz EQ";accessible-value: point.value;
+        key := FocusScope {key-pressed(event) => {if event.text==Key.UpArrow || event.text==Key.RightArrow {UiData.eq-edit(index,min(12,point.gain + 0.1));return accept;}if event.text==Key.DownArrow || event.text==Key.LeftArrow {UiData.eq-edit(index,max(-12,point.gain - 0.1));return accept;}return reject;}}
+        hit := TouchArea {x: -7px;y: -7px;width: 28px;height: 28px;mouse-cursor: ns-resize;
+            pointer-event(event) => {if event.kind==PointerEventKind.down {key.focus();}}
+            moved => {if self.pressed {UiData.eq-edit(index,clamp(point.gain - (self.mouse-y - self.pressed-y)/root.height*300/252*48,-12,12));}}
+            double-clicked => {UiData.eq-edit(index,0);}
+        }
+    }
+}
+export component EditorWindow inherits Window {
+    title: "DualTone · 声音调节";preferred-width: 940px;preferred-height: 760px;min-width: 820px;min-height: 700px;background: #20292f;
+    default-font-family: "Microsoft YaHei UI";default-font-size: 12px;
+    in-out property <ColorScheme> scheme <=> Palette.color-scheme;
+    VerticalLayout {padding: 20px;spacing: 14px;
+        HorizontalLayout {height: 40px;spacing: 12px;Image {source: UiData.sliders-icon;width: 24px;height: 24px;}Label {text: "声音调节";font-size: 18px;font-weight: 600;horizontal-stretch: 1;}Presets {min-width: 190px;}Action {text: "新增预设";filled: true;min-width: 88px;clicked => {UiData.action("add-preset","");}}Action {text: "删除预设";filled: true;min-width: 88px;enabled: UiData.preset-index>=0;clicked => {UiData.action("delete-preset","");}}Action {text: "更多";filled: true;clicked => {more.show();}}
+            more := PopupWindow {width: 158px;height: 136px;y: 40px; Rectangle {background: #29343c;width: parent.width;height: parent.height;}
+                VerticalLayout {padding: 6px;spacing: 2px;Action {text: "导入预设…";clicked => {more.close();UiData.action("import","");}}Action {text: "导出预设…";clicked => {more.close();UiData.action("export","");}}Action {text: "数字延迟测量";clicked => {more.close();UiData.action("latency","");}}}
+            }
+        }
+        Rectangle {height: 1px;background: #3b454d;}
+        HorizontalLayout {height: 22px;spacing: 16px;
+            Text {text: "━  均衡曲线";color: #ffc451;font-size: 11px;}Text {text: "┄  过滤后";color: #b9af7c;font-size: 11px;}Text {text: "━  来源频谱";color: #9baeba;font-size: 11px;}Text {text: "━  补声频谱";color: #53d2bd;font-size: 11px;}Rectangle {horizontal-stretch: 1;}Action {text: "本机音效…";min-width: 90px;min-height: 22px;clicked => {UiData.action("effects","");}}
+        }
+        EqPlot {min-height: 220px;preferred-height: 300px;vertical-stretch: 1;}
+        HorizontalLayout {height: 30px;CheckBox {text: "十段均衡器";checked: UiData.eq-on;toggled => {UiData.setting("eq_enabled",self.checked ? "true" : "false");}}Rectangle {horizontal-stretch: 1;}Action {text: "增益归零";clicked => {UiData.action("eq-reset","");}}Muted {text: UiData.headroom;}}
+        Rectangle {height: 62px;background: transparent;
+            for point[index] in UiData.eq-points: VerticalLayout {x: (38/900+point.position*830/900)*parent.width - 34px;width: 68px;spacing: 8px;
+                Muted {text: point.frequency;horizontal-alignment: center;height: 18px;}
+                NumEdit {value: point.value;label: "\{point.frequency} Hz 增益";submitted(value) => {UiData.setting("eq-\{index}",value);}}
+            }
+        }
+        Rectangle {height: 1px;background: #3b454d;}
+        HorizontalLayout {height: 28px;spacing: 12px;CheckBox {text: "多段过滤";checked: UiData.band-on;toggled => {UiData.setting("band_enabled",self.checked ? "true" : "false");}}Muted {text: "\{UiData.bands.length} / 8 段";horizontal-stretch: 1;}Action {text: "新增频段";enabled: UiData.bands.length<8;clicked => {UiData.action("band-add","");}}}
+        ScrollView {height: 116px;
+            VerticalLayout {padding: 2px;spacing: 8px;
+                for row[index] in UiData.bands: HorizontalLayout {height: 32px;spacing: 8px;
+                    CheckBox {checked: row.enabled;toggled => {UiData.band-edit(index,"enabled",self.checked ? "true" : "false");}}
+                    Muted {text: "下限";}NumEdit {value: row.low;label: "频段下限 Hz";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"low",value);}}
+                    Muted {text: "上限";}NumEdit {value: row.high;label: "频段上限 Hz";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"high",value);}}
+                    Muted {text: "Hz";}NumEdit {value: row.gain;label: "频段增益 dB";horizontal-stretch: 1;submitted(value) => {UiData.band-edit(index,"gain_db",value);}}
+                    Muted {text: "dB";}Action {text: "删除";min-width: 48px;enabled: UiData.bands.length>1;clicked => {UiData.action("band-delete","\{index}");}}
+                }
+            }
+        }
+        if UiData.issue != "": Text {text: UiData.issue;color: #ffb6aa;font-size: 11px;wrap: word-wrap;max-height: 34px;}
+        HorizontalLayout {height: 30px;Muted {text: "副音频 \{round(UiData.gain*10)/10} %";horizontal-stretch: 1;}Action {text: UiData.paused ? "恢复补声" : "静音对比";filled: true;min-width: 90px;clicked => {UiData.action("pause","");}}}
+    }
+}
+export component InfoWindow inherits Window {
+    title: UiData.dialog-title;preferred-width: 520px;preferred-height: 340px;min-width: 420px;background: UiData.dark ? #20292f : #f1f4f6;
+    default-font-family: "Microsoft YaHei UI";
+    in-out property <ColorScheme> scheme <=> Palette.color-scheme;
+    VerticalLayout {padding: 24px;spacing: 16px;
+        Label {text: UiData.dialog-title;font-size: 18px;font-weight: 600;height: 28px;}
+        ScrollView {vertical-stretch: 1;Label {text: UiData.dialog-text;wrap: word-wrap;vertical-alignment: top;}}
+        if UiData.dialog-title=="关于 DualTone": AboutSlint {}
+        if UiData.dialog-input: LineEdit {placeholder-text: "预设名称";text <=> root.name;accepted => {UiData.action("confirm-preset",root.name);}}
+        Action {text: UiData.dialog-input ? "保存预设" : "关闭";filled: true;clicked => {UiData.action(UiData.dialog-input ? "confirm-preset" : "close-info",root.name);}}
+    }
+    in-out property <string> name;
+}

@@ -32,3 +32,7 @@ __pycache__/
 /validate_*.py
 /verify_themes.py
 /DualTone.spec
+/native-app/vendor/
+/native-app/build/
+/native-app/dist/
+/native-app/qa/

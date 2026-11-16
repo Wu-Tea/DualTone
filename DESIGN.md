@@ -5,15 +5,17 @@ FabFilter for a dominant interactive response/spectrum canvas; FxSound for
 direct detailed EQ controls. User rejected the first generic settings-form
 layout as insufficient visual translation of those references.
 
-Operate mode. Main window is 440 × 688 logical pixels, with one grouped device
+Operate mode. Native main window is 440 × 760 logical pixels, with one grouped device
 selector, supplementary gain/mute, a response/spectrum preview, preset and queue
-status. Detailed adjustment uses a separate nonmodal 940 × 690 window, retaining
+status. Detailed adjustment uses a separate nonmodal 940 × 760 window, retaining
 the main control panel rather than stretching it into a large form.
 
-Qt Quick Controls is the component framework. FluentWinUI3 supplies the compact
-shell's menus, selectors and switches. Basic controls supply the instrument
-panel with its explicit dark palette. Fader.qml owns slider geometry; Icon.qml
-owns the consistent line icons. Native title bars and keyboard behavior remain.
+Slint Fluent is the native component framework in v0.2. It supplies the compact
+shell's menus, selectors and switches. Custom Slint controls supply the instrument
+panel with its explicit dark palette. native-app/ui/main.slint owns control geometry;
+native-app/gui.cpp supplies type-aware line icons and spectrum rendering.
+Native title bars and keyboard behavior remain. The earlier Qt files remain as
+the v0.1 reference, not a runtime dependency.
 The compact panel follows the system light/dark scheme. The instrument canvas
 uses graphite, amber for the processing curve, gray for source spectrum and
 mint for auxiliary spectrum. The EQ curve excludes gain and preamp; spectra use
