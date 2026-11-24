@@ -1,93 +1,69 @@
-# DualTone interface
+# DualTone interface · v0.5
 
-User-approved references: SoundSource for the compact everyday control panel;
-FabFilter for a dominant interactive response/spectrum canvas; FxSound for
-direct detailed EQ controls. User rejected the first generic settings-form
-layout as insufficient visual translation of those references.
+The user requested a complete visual rework using the local yolo-study-001 project
+as the implementation reference. Its current web interface separates materials,
+controls, typography and task layout. DualTone translates that method to Slint;
+it keeps the native audio core and CLI and does not embed the reference app,
+React or a browser runtime.
 
-Operate mode. Native main window is 440 × 800 logical pixels, with one grouped device
-selector, supplementary gain/mute, a response/spectrum preview, preset and queue
-status. Detailed adjustment uses a separate nonmodal 940 × 760 window, retaining
-the main control panel rather than stretching it into a large form.
+## Visual system
 
-Slint Fluent is the native component framework in v0.2. It supplies the compact
-shell's menus, selectors and switches. Custom Slint controls supply the instrument
-panel with its explicit dark palette. native-app/ui/main.slint owns control geometry;
-native-app/gui.cpp supplies type-aware line icons and spectrum rendering.
-Native title bars and keyboard behavior remain. The earlier Qt files remain as
-the v0.1 reference, not a runtime dependency.
-The compact panel follows the system light/dark scheme. The instrument canvas
-uses graphite, amber for the processing curve, gray for source spectrum and
-mint for auxiliary spectrum. The EQ curve excludes gain and preamp; spectra use
-a separate dBFS axis and include the actual rendered gain.
+`native-app/ui/controls.slint` owns the shared Theme, surfaces and controls.
+Use a cool graphite foundation, softly lit surfaces, restrained rims, pale-blue
+selection/focus, neutral text, and muted mint only for audio activity. This is
+native gradient/shadow rendering, not OS backdrop blur. Theme tokens provide
+light equivalents; charts read the same palette from Slint in gui.cpp.
 
-No hardware essays in the UI. Help/research belong in the Markdown documents.
-Queue size is explicitly distinct from unmeasured acoustic latency. Hidden
-windows suspend spectrum analysis. FFT work is bounded and runs outside the
-audio worker; the worker never waits for drawing. All sound processing remains
-auxiliary-only, with unchanged JSON presets and local CLI control.
+Dark is the initial appearance. Light and system-following remain available in
+the main menu and persist separately in `data/appearance.json`. They are also
+accessible with `DualToneCLI appearance dark|light|system`. Appearance must not
+alter sound presets, routing or the audio worker.
 
-Main and auxiliary are routing roles, not hardware identities. Both selectors
-list all current render endpoints with native rate/channel capability and any
-unsupported reason. The main endpoint is a playback source read by loopback;
-the auxiliary endpoint receives processed audio. No monitor-name heuristics or
-48 kHz-only target filter. A fixed 48 kHz internal DSP clock is separate from
-endpoint rates, bridged by causal streaming resamplers. Icons use Windows
-form-factor metadata; unknown types use a waveform. Swap and refresh belong
-in the device group. No automatic secondary-device choice. Explicit main-device selection, swap,
-and starting forwarding synchronize Windows console/multimedia defaults;
-communications remains unchanged. Main audio stays directly rendered by apps. Existing user device IDs and DSP settings survive upgrades.
-Device controls use a 4 px spacing scale, following Fluent's layout guidance
-(https://fluent2.microsoft.design/layout). The group has 12 px padding. A single
-36 px control contains the icon, label and disclosure indicator, with 12 px
-horizontal padding; its focus outline encloses that entire padded hit area.
-The 20 px device icon and name have a 12 px gap. Menu surfaces have 4 px padding
-and menu items have 8 px padding, so expanded and collapsed content share the
-same column origins without removing internal breathing room. Two-line device
-items are 56 px tall; placeholder items are 40 px. Selected items use a tinted
-surface and a checkmark, independently of the neutral hover/keyboard highlight.
-Keep at least 420 x 800 logical pixels so the footer remains inside the window.
-Do not fix alignment by zeroing control padding or placing content on a focus
-border. Verify open menus as well as the closed panel in light and dark themes.
+The base scale is 4 px: page inset 20, surface inset 16, control gap 8–12,
+control height 36, control radius 10, surface radius 14. Body text is 13 px,
+secondary text 12, window titles 20–22. Numeric fields keep a fixed width and
+right-align values with units; buttons do not absorb unused row width.
 
-Verification: actual Slint window captures at default and minimum size, keyboard
-EQ editing, GUI/CLI shared-state tests, and real endpoint playback.
+The material palette is adapted from the reference project's Solid Glass
+system (DeepLethe, MIT). Include native-app/SolidGlass.LICENSE in distributions.
+No reference assets, application code or hardware-specific defaults are copied.
 
-The detailed EQ is edited directly on the chart. Amber handles/curve represent
-EQ gains; the dashed curve shows the band-filtered response. Keep handles at
-the actual EQ gain so a bandpass cannot bury low-frequency controls at the
-chart floor. Ten numeric inputs below share a width determined only by plot
-geometry, aligned to the logarithmic band positions; text length never changes
-columns. Drag, double-click reset, arrow-key adjustment and direct typing are
-available. The two independent controls say “均衡器” and “频段过滤”; disabling
-one does not disable the other or external system effects. Preset creation and
-deletion are primary actions; import/export are in More. Only user-saved presets exist. Every dropdown entry resolves to saved DSP
-values; “current settings” is never a selectable placeholder. Empty and
-unmatched states use display text with currentIndex -1, without adding fake
-entries. Deleting a preset retains current processing values.
+## Task surfaces
 
+- Main: 460 × 510, minimum width 420. Only devices, auxiliary volume/mute,
+  effect selection and preset selection remain visible, with one sound editor
+  entry and one sync entry. No chart, duplicated processing toggles, unexplained
+  meters or software queue telemetry on the everyday surface.
+- Sound editor: 980 × 860, minimum 840 × 820. Effect parameters, editable spectrum,
+  EQ and frequency filtering share one workspace. Effect selection on the main
+  panel determines which parameters appear here.
+- Sync: 520 × 440. Direct playback or delay alignment controls are task-named.
+  Required virtual input and primary delay appear only for alignment.
+- Diagnostics: reachable from the menu, owns queue/meter feedback and digital
+  latency measurement. Errors stay visible on the operational windows.
+- Presets: one management window for create, view/select/load, update from current
+  sound, rename, delete, import and export. Update/delete request explicit UI
+  confirmation. Applying presets keeps the current device routes and delay.
+- Information and confirmation windows share the palette, padding, field styling
+  and button scale; errors remain visible and leave persisted settings intact.
 
-多段过滤沿用编辑器的行式参数布局：每行开关、下限、上限、增益、删除；上方总开关旁显示启用段数和新增操作。列表最多 8 行，默认窗口显示 3 行、最小高度显示 2 行，其余滚动。新增行关闭，当前设置迁移为第一行。金色 EQ 锚点仍独立可拖动，虚线显示真实多段混合响应。数值非法时提交或失焦恢复实际参数，不能显示未生效值。
+## Behavior
 
+Every custom control has a keyboard focus indication. Pickers support arrow
+navigation, Enter to commit and Escape to dismiss without changing data. Slider
+arrows perform a defined step; adjacent numbers provide exact entry. Invalid
+numbers produce a validation error. Selection is owned by persisted settings,
+not by a widget's first item. Empty and modified preset states are placeholders.
 
-The main panel has two auxiliary processing modes: space and wet-only reverb.
-A shared Row layout vertically centers mixed-height icons, labels and controls.
-Device captions align with text inside the selectors; legends use vector line
-segments and fixed compact columns. Filter rows explicitly label lower bound,
-upper bound and gain, with units beside their inputs.
+Selecting a primary device keeps existing routing behavior. Changing sync
+endpoints requires stopped playback. EQ, multi-band filters, spatial processing,
+reverb and comparison mute remain auxiliary-only. The primary delay is available
+only in the existing optional sync route. Native title bars and tray behavior stay.
 
-Reverb controls stay on the main panel: room size, decay seconds and brightness,
-using a shared parameter row with a fixed label and right-aligned value column.
-The existing auxiliary volume is the wet amount. Mode selection does not alter
-old EQ, filter, body-retention or device settings. Reverb input processing is
-labeled separately; the graph shows EQ/filter response, not the FDN response.
+## Verification
 
-
-v0.4: Keep the compact panel geometry. A single 同步设置 entry in the main-device
-caption opens a separate 480 × 410 settings window. Direct and dual-route modes
-are mutually exclusive. Only sync mode shows virtual ingress selection and
-main delay (numeric milliseconds, ±5 ms buttons, keyboard-accessible fader).
-Transport settings are local routing, not sound presets. Device changes require
-stopped playback in sync mode. Effects and comparison mute remain auxiliary-only;
-main now optionally uses an independent delayed render queue. Status distinguishes
-同步中 from ordinary 补声中. Restore owned default roles on normal stop/error.
+Render actual Slint windows in dark and light modes, including minimum-size
+main/editor windows, open pickers, populated/empty preset management and errors.
+Exercise numeric entry and picker keyboard events through Windows; validate
+preset CRUD and theme persistence through CLI, then check GUI state. Existing
+DSP, reverb, synchronization and shared GUI/CLI state regressions remain required.

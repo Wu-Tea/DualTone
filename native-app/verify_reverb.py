@@ -15,19 +15,20 @@ class ReverbTests(unittest.TestCase):
             def call(*args):
                 p=subprocess.run([str(ROOT/'dist/DualToneCLI.exe'),'--data-dir',tmp,*args],capture_output=True,timeout=15)
                 r=json.loads(p.stdout);self.assertTrue(r['ok'],r);return r['result']
-            proc=subprocess.Popen([str(ROOT/'dist/DualTone.exe'),'--data-dir',tmp,'--quit-after','30'],creationflags=subprocess.CREATE_NO_WINDOW)
+            proc=subprocess.Popen([str(ROOT/'dist/DualTone.exe'),'--data-dir',tmp,'--details','--quit-after','30'],creationflags=subprocess.CREATE_NO_WINDOW)
             user=ctypes.WinDLL('user32',use_last_error=True)
             callback=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
             user.EnumWindows.argtypes=[callback,wintypes.LPARAM]
             user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
             user.GetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int]
             user.PostMessageW.argtypes=[wintypes.HWND,wintypes.UINT,wintypes.WPARAM,wintypes.LPARAM]
-            handles=[]
+            handles=[]; editors=[]
             @callback
             def collect(hwnd,_):
                 pid=wintypes.DWORD();user.GetWindowThreadProcessId(hwnd,ctypes.byref(pid))
                 title=ctypes.create_unicode_buffer(256);user.GetWindowTextW(hwnd,title,256)
                 if pid.value==proc.pid and title.value=='DualTone':handles.append(hwnd)
+                if pid.value==proc.pid and title.value=='DualTone · 声音调节':editors.append(hwnd)
                 return True
             try:
                 for _ in range(60):
@@ -36,7 +37,7 @@ class ReverbTests(unittest.TestCase):
                 # IPC is ready before Slint has created its visible HWND.
                 for _ in range(50):
                     user.EnumWindows(collect,0)
-                    if handles:break
+                    if handles and editors:break
                     time.sleep(.1)
                 self.assertTrue(handles)
                 hwnd=handles[0]
@@ -44,12 +45,13 @@ class ReverbTests(unittest.TestCase):
                     point=x|(y<<16)
                     for msg,key in [(0x200,0),(0x201,1),(0x202,0)]:user.PostMessageW(hwnd,msg,key,point)
                     time.sleep(.2)
-                click(320,339);self.assertEqual(call('get')['effect_mode'],'reverb')
-                click(300,380);self.assertGreater(call('get')['reverb_size'],60)
-                click(300,414);self.assertGreater(call('get')['reverb_decay'],2.5)
-                click(140,448);self.assertLess(call('get')['reverb_brightness'],30)
+                click(330,324);
+                hwnd=editors[0];self.assertEqual(call('get')['effect_mode'],'reverb')
+                click(210,128);self.assertGreater(call('get')['reverb_size'],60)
+                click(530,128);self.assertGreater(call('get')['reverb_decay'],2.5)
+                click(748,128);self.assertLess(call('get')['reverb_brightness'],30)
                 size=call('get')['reverb_size']
-                click(100,339);self.assertEqual(call('get')['effect_mode'],'space')
+                hwnd=handles[0];click(100,324);self.assertEqual(call('get')['effect_mode'],'space')
                 self.assertEqual(call('get')['reverb_size'],size)
             finally:
                 if proc.poll() is None:call('shutdown');proc.wait(timeout=10)

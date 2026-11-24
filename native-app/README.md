@@ -1,10 +1,10 @@
 # DualTone · 原生轻量版
 
-Windows x64 免安装工具，C++ 音频核心 + Slint Fluent 界面。解压后双击 `DualTone.exe`，选择主音频和副音频，打开右上角开关。整个文件夹一起保留，无需安装 Python 或 Qt。直出模式不需要虚拟声卡；双路同步使用已安装的虚拟声卡。
+Windows x64 免安装工具，C++ 音频核心 + Slint 原生界面。解压后双击 `DualTone.exe`，选择主音频和副音频，点击右上角「开始」。整个文件夹一起保留，无需安装 Python 或 Qt。直出模式不需要虚拟声卡；双路同步使用已安装的虚拟声卡。
 
 ## 双路同步
 
-主音频旁的「同步设置」新增「双路同步」：选择虚拟音频入口，DualTone 分别输出到主、副设备，主路可增加 0–1000 ms 延迟。正常停止后恢复仍由应用占用的 Windows 默认输出，通信设备不变。主路延迟可边听边调；不自动测量声学延迟。详见仓库 `docs/dual-route-sync.md`。
+底部「同步设置」中选择「延迟对齐」：选择虚拟音频入口，DualTone 分别输出到主、副设备，主路可增加 0–1000 ms 延迟。正常停止后恢复仍由应用占用的 Windows 默认输出，通信设备不变。主路延迟可边听边调；不自动测量声学延迟。详见仓库 `docs/dual-route-sync.md`。
 
 声音预设只切换效果；当前设备、播放方式和同步延迟保持不变。被强制结束时请在 Windows 中重新选择物理输出。
 
@@ -12,12 +12,13 @@ Windows x64 免安装工具，C++ 音频核心 + Slint Fluent 界面。解压后
 
 - 默认直出模式中，主音频保持直出，选择主音频或开始补声会同步 Windows 普通与多媒体默认输出；通信默认设备不变。固定选择设备的游戏仍须在游戏内改输出。
 - 直出模式的副音频支持播放中切换；同步模式改设备前须先停止。设备格式按 Windows 原生混音格式使用，支持立体声 float32、44.1/48/88.2/96/176.4/192 kHz。
-- 主面板跟随系统明暗主题，保留独立的深色声音调节窗口、托盘、静音对比、实时频谱。
-- 新增“副路混响”：副设备只播放效果尾音，混响效果本身不延迟主路。可调空间大小 0–100%、尾音 0.2–4 秒、明暗 0–100%，补声量使用现有副音频音量。EQ 和过滤作用于混响输入；主体保留设置保留但在混响模式不参与处理。
+- 首页只保留设备、副音量、效果和预设；频谱与参数在「声音调节」中，延迟对齐在「同步设置」中。
+- 统一的深灰与浅蓝界面，主面板、声音调节、同步和预设窗口共用控件与材质。主菜单可选择深色、浅色或跟随系统，外观单独保存，不影响声音配置。保留托盘、静音对比与实时频谱。
+- “混响”：副设备只播放效果尾音，混响效果本身不延迟主路。可调空间大小 0–100%、尾音 0.2–4 秒、明暗 0–100%，补声量使用现有副音频音量。EQ 和过滤作用于混响输入；主体保留设置保留但在混响模式不参与处理。
 - “主体保留”向左减少副路居中的人声与乐器，向右保留更多。它是 Mid/Side 处理，不是人声分离或 5.1 解码。
 - 十段 EQ 可直接拖动曲线频点、双击归零、用方向键以 0.1 dB 微调、或在下方输入数值。均衡器与多段过滤独立开关。
 - 可增删 1–8 段过滤，各段独立上下限、增益和开关。新增段默认关闭；所有行关闭时不再输入声音（混响模式已有尾音继续衰减），关闭总开关则旁通。
-- 自定义预设支持新增、删除、切换；详细窗口“更多”保留导入、导出和数字延迟测量。“本机音效”只读检查 APO 安装与挂载，不改系统音效。
+- “管理预设”集中提供新增、载入、更新、重命名、删除及导入导出；更新与删除会确认。队列、电平和数字延迟测量位于菜单的「诊断」；声音调节内可检查本机音效，不改系统音效。
 
 ## 原配置与 CLI
 
@@ -33,7 +34,10 @@ Windows x64 免安装工具，C++ 音频核心 + Slint Fluent 界面。解压后
 .\DualToneCLI.exe set --json '{"effect_mode":"reverb","reverb_size":40,"reverb_decay":1.2,"reverb_brightness":40}'
 .\DualToneCLI.exe set --file patch.json
 .\DualToneCLI.exe preset-add '我的预设'
-.\DualToneCLI.exe preset '我的预设'
+.\DualToneCLI.exe preset-update '我的预设'
+.\DualToneCLI.exe preset-rename '我的预设' '夜间'
+.\DualToneCLI.exe appearance dark
+.\DualToneCLI.exe preset '夜间'
 .\DualToneCLI.exe set --json '{"routing_mode":"sync","input_id":"虚拟播放端 ID","main_delay_ms":40}'
 .\DualToneCLI.exe start
 .\DualToneCLI.exe status
@@ -46,7 +50,7 @@ Windows x64 免安装工具，C++ 音频核心 + Slint Fluent 界面。解压后
 .\DualToneCLI.exe shutdown
 ```
 
-完整命令：`devices / schema / get / set / presets / preset / preset-add / preset-delete / effects / start / stop / status / latency / pause / import / export / shutdown / serve`。`--data-dir 路径` 放在子命令前。GUI 打开时 CLI 控制同一实例；未打开时 start 启动无界面服务。正常响应为 UTF-8 JSON，成功退出码 0、失败 1。命名管道仅当前用户可访问，不打开网络端口。
+完整命令：`devices / schema / get / set / presets / preset / preset-add / preset-delete / preset-update / preset-rename / appearance / effects / start / stop / status / latency / pause / import / export / shutdown / serve`。`--data-dir 路径` 放在子命令前。GUI 打开时 CLI 控制同一实例；未打开时 start 启动无界面服务。正常响应为 UTF-8 JSON，成功退出码 0、失败 1。命名管道仅当前用户可访问，不打开网络端口。
 
 `latency --probe` 会播放约四秒低音量测试信号；不加此参数则使用正在播放的声音。同步或混响模式拒绝旧数字延迟测量，须在直出与空间补充模式使用。数字回环结果不包含完整设备、无线和声学延迟，时间戳异常或相关性不足时不得当作可靠延迟。
 
@@ -63,7 +67,7 @@ Windows x64 免安装工具，C++ 音频核心 + Slint Fluent 界面。解压后
 ```powershell
 .\bootstrap.ps1
 cmd /c build.cmd
-.\package.ps1 -Version 0.4.0
+.\package.ps1 -Version 0.5.0
 ```
 
 bootstrap 仅下载依赖到 `vendor`，可使用已有 7-Zip 或 Bandizip 解包官方 SDK；也可通过 `-SlintSdkDirectory 路径` 指定已解压 SDK。不执行 SDK 安装程序。运行版无需这些构建工具。

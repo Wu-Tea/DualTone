@@ -16,7 +16,7 @@ int cli_main(int argc, wchar_t **argv) {
         if (cmd == "--help" || cmd == "-h") {
             std::cout << "DualTone native CLI\nUsage: DualToneCLI [--data-dir PATH] COMMAND\nCommands: "
                          "devices schema get set (--json JSON|--file FILE) presets preset NAME "
-                         "preset-add NAME preset-delete NAME effects start stop status latency "
+                         "preset-add NAME preset-delete NAME preset-update NAME preset-rename OLD NEW appearance [dark|light|system] effects start stop status latency "
                          "[--probe] pause on|off import FILE export FILE shutdown serve\n";
             return 0;
         }
@@ -46,8 +46,10 @@ int cli_main(int argc, wchar_t **argv) {
             if (!args.is_object())
                 throw std::runtime_error("设置补丁必须为对象");
         }
-        if (cmd == "preset" || cmd == "preset-add" || cmd == "preset-delete")
+        if (cmd == "preset" || cmd == "preset-add" || cmd == "preset-delete" || cmd == "preset-update" || cmd == "preset-rename")
             args["name"] = utf8(next());
+        if (cmd == "preset-rename") args["replacement"] = utf8(next());
+        if (cmd == "appearance" && i < argc) args["theme"] = utf8(next());
         if (cmd == "pause") {
             auto value = next();
             if (value != L"on" && value != L"off")
@@ -127,6 +129,7 @@ int cli_main(int argc, wchar_t **argv) {
                           {"result", {{"running", false}, {"audio", {{"state", "offline"}}}}}};
             else if (command == "get" || command == "set" || command == "presets" ||
                      command == "preset" || command == "preset-add" || command == "preset-delete" ||
+                     command == "preset-update" || command == "preset-rename" || command == "appearance" ||
                      command == "effects") {
                 Host h(dir);
                 if (h.store.failed)

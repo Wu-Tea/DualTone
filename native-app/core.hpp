@@ -76,6 +76,8 @@ struct Store {
     void save();
     json add(std::string name);
     json remove(std::string name);
+    json replace(std::string name);
+    json rename(std::string name, std::string replacement);
 };
 struct Biquad {
     double b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
@@ -166,6 +168,7 @@ struct Host {
     std::recursive_mutex mutex;
     std::atomic_bool quitting = false;
     uint64_t revision = 0;
+    json appearance = {{"theme", "dark"}};
     explicit Host(fs::path dir);
     json command(const std::string &name, const json &args = json::object());
     json set(json patch);

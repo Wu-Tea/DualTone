@@ -220,6 +220,26 @@ json Store::add(std::string n) {
     }
     return {{"name", n}, {"settings", current}};
 }
+json Store::replace(std::string n) {
+    if (!presets.contains(n)) throw std::runtime_error("预设不存在");
+    auto old = presets;
+    presets[n] = current;
+    try { save(); } catch (...) { presets = old; throw; }
+    return {{"name", n}, {"settings", current}};
+}
+json Store::rename(std::string n, std::string replacement) {
+    if (!presets.contains(n)) throw std::runtime_error("预设不存在");
+    auto start = replacement.find_first_not_of(" \t\r\n"), end = replacement.find_last_not_of(" \t\r\n");
+    if (start == std::string::npos) throw std::runtime_error("请输入预设名称");
+    replacement = replacement.substr(start, end - start + 1);
+    if (wide(replacement).size() > MaxNameLength) throw std::runtime_error("预设名称过长");
+    if (replacement == n) return {{"name", n}};
+    if (presets.contains(replacement)) throw std::runtime_error("预设名称已存在");
+    auto old = presets;
+    presets[replacement] = presets[n]; presets.erase(n);
+    try { save(); } catch (...) { presets = old; throw; }
+    return {{"name", replacement}};
+}
 json Store::remove(std::string n) {
     if (!presets.contains(n))
         throw std::runtime_error("预设不存在");

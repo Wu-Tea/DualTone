@@ -1,4 +1,4 @@
-param([string]$Version = '0.4.0')
+param([string]$Version = '0.5.0')
 $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+(-[A-Za-z0-9.-]+)?$') { throw 'Invalid version' }
 $root = $PSScriptRoot
@@ -19,7 +19,7 @@ $licenses = Join-Path $bundle 'licenses'
 New-Item -ItemType Directory -Force -Path $licenses | Out-Null
 Copy-Item -Path (Join-Path $root 'vendor\slint\licenses\*') -Destination $licenses
 Copy-Item -LiteralPath (Join-Path $root 'vendor\Slint-Royalty-free.md'),(Join-Path $root 'vendor\json-LICENSE.MIT') -Destination $licenses
-Copy-Item -LiteralPath (Join-Path $root 'THIRD-PARTY.md') -Destination $licenses
+Copy-Item -LiteralPath (Join-Path $root 'THIRD-PARTY.md'),(Join-Path $root 'SolidGlass.LICENSE') -Destination $licenses
 $source = Join-Path $bundle 'source'
 New-Item -ItemType Directory -Force -Path $source | Out-Null
 foreach ($pattern in @('*.cpp','*.hpp','*.cmd','*.ps1','*.rc','*.manifest','*.md','verify_*.py','generate_tables.py','.clang-format')) {

@@ -1,20 +1,20 @@
 # DualTone · 原生轻量主副音频工具
 
-[下载 Windows 免安装版](https://github.com/Wu-Tea/DualTone/releases/tag/v0.4.0) · [完整使用说明](native-app/README.md) · [版本说明](native-app/RELEASE_NOTES.md)
+[下载 Windows 免安装版](https://github.com/Wu-Tea/DualTone/releases/tag/v0.5.0) · [完整使用说明](native-app/README.md) · [版本说明](native-app/RELEASE_NOTES.md)
 
 把 Windows 主音频的播放内容处理后送到另一台设备，用来补充环境细节。保留主路直出，也支持通过虚拟音频入口同时转发两路，并延迟主路来补偿副路滞后。
 
-v0.4 使用 **C++20、Slint Fluent UI 和原生 WASAPI**，不再打包 Python、Qt、NumPy 或 SciPy。原生完整包保持轻量，打包脚本检查 ZIP 不超过 20 MiB。解压整个文件夹后双击 `DualTone.exe`，保留旁边的 DLL，无需另装运行环境；双路同步需要已安装的虚拟声卡。
+v0.5 使用 **C++20、Slint 原生 UI 和原生 WASAPI**，不再打包 Python、Qt、NumPy 或 SciPy。原生完整包保持轻量，打包脚本检查 ZIP 不超过 20 MiB。解压整个文件夹后双击 `DualTone.exe`，保留旁边的 DLL，无需另装运行环境；双路同步需要已安装的虚拟声卡。
 
 ## 功能
 
 - 新增「同步设置」：主路直出 / 双路同步，主路延迟 0–1000 ms，播放中可调；正常停止恢复系统默认输出。
-- 紧凑主面板、独立深色声音调节窗口、系统明暗主题、实时频谱和托盘。
+- 重做的统一外观：深灰材质、浅蓝选中态、对齐的数值与单位；主面板、声音调节、同步和预设窗口共用控件。支持深色、浅色、跟随系统。
 - 主副设备选择、交换、刷新；直出模式播放中可切换副设备。在直出模式选择主音频时同步 Windows 普通及多媒体默认输出，通信设备不变。
 - 默认空间补充与主体保留、副路音量、静音对比；新增[副路混响](docs/auxiliary-reverb.md)，可调空间大小、尾音时长和明暗，主路不受混响效果处理。
 - 图上拖动十段 EQ、键盘微调、下方数值输入；独立的均衡器和多段过滤开关。
 - 增删 1–8 个过滤频段，各段独立上下限、增益与开关。
-- 自定义预设增删、导入导出、本机音效只读检查、数字延迟测量。
+- 独立预设管理：新增、载入、更新、重命名、删除、导入导出；本机音效只读检查和数字延迟测量。
 - 全部 JSON CLI 命令；GUI 打开时控制同一实例，也可通过 CLI 启动无界面服务。
 
 可读取旧版 `data/settings.json` 和预设，首次保存为 version 4 前自动留备份。退出旧实例后，把原来的 `data` 文件夹复制到新版旁即可；启动默认停止，不猜测副设备。发布包不携带个人配置。
@@ -43,7 +43,7 @@ v0.4 使用 **C++20、Slint Fluent UI 和原生 WASAPI**，不再打包 Python�
 cd native-app
 .\bootstrap.ps1
 cmd /c build.cmd
-.\package.ps1 -Version 0.4.0
+.\package.ps1 -Version 0.5.0
 ```
 
 原生源码在 [`native-app/`](native-app/)，许可证随发布包提供。数值回归以保留的 v0.1 Python 实现为参考，覆盖 DSP、全部受支持采样率与分包边界、配置迁移及 GUI/CLI 共享状态；实际路由另用隔离配置和数字静音验证。运行版不依赖这些 Python 测试工具。

@@ -6,6 +6,15 @@
 #include <sstream>
 namespace dt {
 Host::Host(fs::path dir) : store(dir) {
+    auto path = store.directory / L"appearance.json";
+    if (fs::exists(path)) {
+        try {
+            auto doc = read_json(path);
+            auto theme = doc.at("theme");
+            if (theme != "dark" && theme != "light" && theme != "system") throw std::runtime_error("未知外观");
+            appearance = {{"theme", theme}};
+        } catch (const std::exception &) { store.warning += " 外观配置无法读取，暂用深色。"; }
+    }
     engine.update(std::make_shared<Dsp>(store.current));
 }
 json Host::set(json patch) {
@@ -90,7 +99,7 @@ json Host::schema() {
               {"fields", {"low", "high", "gain_db", "enabled"}},
               {"legacy", "low/high edit the first band only."}}},
             {"commands",
-             {"devices", "get", "set", "presets", "preset", "preset-add", "preset-delete", "effects",
+             {"devices", "get", "set", "presets", "preset", "preset-add", "preset-delete", "preset-update", "preset-rename", "appearance", "effects",
               "start", "stop", "status", "latency", "pause", "import", "export", "shutdown", "serve",
               "schema"}},
             {"scope", "All DSP settings affect auxiliary output only."},
@@ -102,6 +111,16 @@ json Host::schema() {
 }
 json Host::command(const std::string &c, const json &args) {
     std::lock_guard lock(mutex);
+    if (c == "appearance") {
+        if (!args.empty()) {
+            auto theme = args.at("theme");
+            if (theme != "dark" && theme != "light" && theme != "system")
+                throw std::runtime_error("外观必须为 dark、light 或 system");
+            save_json(store.directory / L"appearance.json", {{"theme", theme}});
+            appearance = {{"theme", theme}}; ++revision;
+        }
+        return appearance;
+    }
     if (c == "schema")
         return schema();
     if (c == "devices")
@@ -122,6 +141,10 @@ json Host::command(const std::string &c, const json &args) {
         auto r = store.add(args.at("name"));
         revision++;
         return r;
+    }
+    if (c == "preset-update" || c == "preset-rename") {
+        auto r = c == "preset-update" ? store.replace(args.at("name")) : store.rename(args.at("name"), args.at("replacement"));
+        ++revision; return r;
     }
     if (c == "preset-delete") {
         auto r = store.remove(args.at("name"));
