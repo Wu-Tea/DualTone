@@ -67,7 +67,7 @@ Windows x64 免安装工具，C++ 音频核心 + Slint 原生界面。解压后�
 ```powershell
 .\bootstrap.ps1
 cmd /c build.cmd
-.\package.ps1 -Version 0.5.0
+.\package.ps1 -Version 0.5.1
 ```
 
 bootstrap 仅下载依赖到 `vendor`，可使用已有 7-Zip 或 Bandizip 解包官方 SDK；也可通过 `-SlintSdkDirectory 路径` 指定已解压 SDK。不执行 SDK 安装程序。运行版无需这些构建工具。

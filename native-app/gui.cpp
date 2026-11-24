@@ -391,6 +391,7 @@ class Ui {
         g.set_dark(use_dark());
         info->set_scheme((use_dark()) ? slint::cbindgen_private::ColorScheme::Dark
                                                        : slint::cbindgen_private::ColorScheme::Light);
+        info->window().set_size(slint::LogicalSize{{520.f, input ? 270.f : confirm != "close-info" ? 220.f : 340.f}});
         info->show();
         SetForegroundWindow(info->window().win32_hwnd());
     }
@@ -472,7 +473,7 @@ class Ui {
             else if (c == "diagnostics")
                 dialog("诊断", "");
             else if (c == "about")
-                dialog("关于 DualTone", "DualTone 0.5.0 · 原生轻量版\nC++ + Slint · "
+                dialog("关于 DualTone", "DualTone 0.5.1 · 原生轻量版\nC++ + Slint · "
                                         "WASAPI\n\n支持主路直出或双路同步，副音频独立处理。\n支持旧配置迁移与 JSON CLI "
                                         "v0.1。\n\nhttps://github.com/Wu-Tea/DualTone");
             else if (c == "eq-reset")
