@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <shellapi.h>
 #include <sstream>
+#include "window_frame.hpp"
 using namespace dt;
 static std::string str(const slint::SharedString &s) {
     return std::string(s.data(), s.size());
@@ -46,12 +47,6 @@ static slint::Image icon(const std::string &name) {
     if (name == "digital")
         return svg("<rect x='3' y='6' width='18' height='12' rx='3'/><path d='M7 10h10M7 14h5'/>");
     return svg("<path d='M4 10v4M9 4v16M15 7v10M20 10v4'/>");
-}
-static slint::Image logo() {
-    std::string s = "<svg xmlns='http://www.w3.org/2000/svg' width='34' height='34'><rect width='34' "
-                    "height='34' rx='9' fill='#344c63'/><path d='M8 14v6m6-12v18m6-14v10m6-7v4' "
-                    "fill='none' stroke='#d4e5f6' stroke-width='1.7' stroke-linecap='round'/></svg>";
-    return slint::Image::load_from_data({reinterpret_cast<const uint8_t *>(s.data()), s.size()}, "svg");
 }
 static slint::Image chart_image(const Dsp &dsp, const std::vector<std::array<double, 4>> &data,
                                 bool mini, const Theme &theme) {
@@ -210,7 +205,6 @@ class Ui {
     slint::ComponentHandle<MainWindow> main = MainWindow::create();
     slint::ComponentHandle<EditorWindow> editor = EditorWindow::create();
     slint::ComponentHandle<PresetWindow> preset_window = PresetWindow::create();
-    slint::ComponentHandle<SyncWindow> sync_window = SyncWindow::create();
     slint::ComponentHandle<InfoWindow> info = InfoWindow::create();
     json device_rows = json::array();
     std::vector<std::string> labels;
@@ -226,11 +220,9 @@ class Ui {
     std::shared_ptr<slint::VectorModel<EqPoint>> points = model(std::vector<EqPoint>{});
     std::shared_ptr<slint::VectorModel<BandRow>> bands = model(std::vector<BandRow>{});
     explicit Ui(fs::path dir, bool dark, bool light = false) : host(dir), server(host), force_light(light), force_dark(dark) {
-        auto log = logo();
-        for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &info->global<UiData>(), &sync_window->global<UiData>(), &preset_window->global<UiData>()}) {
+        for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &info->global<UiData>(), &preset_window->global<UiData>()}) {
             g->set_max_delay(float(MaxMainDelayMs));
             g->set_minimum_body(float(100 * pow(10., -MidCutDb / 20)));
-            g->set_logo(log);
             g->set_sliders_icon(icon("sliders"));
             g->set_eq_points(points);
             g->set_bands(bands);
@@ -242,8 +234,8 @@ class Ui {
         issue = host.store.warning;
         refresh();
         main->show();
+        WindowFrame::install(main);
         preset_window->window().on_close_requested([this] { preset_window->hide(); return slint::CloseRequestResponse::KeepWindowShown; });
-        sync_window->window().on_close_requested([this] { sync_window->hide(); return slint::CloseRequestResponse::KeepWindowShown; });
         editor->window().on_close_requested([this] {
             editor_visible = false;
             editor->hide();
@@ -306,6 +298,13 @@ class Ui {
         revision = UINT64_MAX;
     }
     void bind(const UiData &g) {
+        g.on_window_action([this](slint::SharedString owner, slint::SharedString command) {
+            const auto key = str(owner), action = str(command);
+            HWND hwnd = key == "main" ? main->window().win32_hwnd() : key == "editor" ? editor->window().win32_hwnd() : key == "presets" ? preset_window->window().win32_hwnd() : info->window().win32_hwnd();
+            if (action == "close") PostMessageW(hwnd, WM_CLOSE, 0, 0);
+            else if (action == "minimize") ShowWindow(hwnd, SW_MINIMIZE);
+            else if (action == "maximize") ShowWindow(hwnd, IsZoomed(hwnd) ? SW_RESTORE : SW_MAXIMIZE);
+        });
         g.on_action(
             [this](slint::SharedString c, slint::SharedString arg) { action(str(c), str(arg)); });
         g.on_setting([this](slint::SharedString k, slint::SharedString v) {
@@ -348,7 +347,7 @@ class Ui {
             double body = v;
             double minimum = 100 * pow(10., -MidCutDb / 20);
             if (!std::isfinite(body) || body < std::floor(minimum * 10) / 10 || body > 100)
-                throw std::runtime_error("主体保留应在 " + fmt(minimum) + "% 到 100% 之间");
+                throw std::runtime_error("中心声量应在 " + fmt(minimum) + "% 到 100% 之间");
             host.command("set", {{"spatial_strength",
                                   std::clamp(-20 * log10(body / 100) / MidCutDb * 100, 0., 100.)}});
         } else if (k.starts_with("eq-")) {
@@ -373,7 +372,6 @@ class Ui {
         auto rows = model(l);
         main->global<UiData>().set_device_labels(rows);
         editor->global<UiData>().set_device_labels(rows);
-        sync_window->global<UiData>().set_device_labels(rows);
         revision = UINT64_MAX;
     }
     bool use_dark() const {
@@ -391,8 +389,9 @@ class Ui {
         g.set_dark(use_dark());
         info->set_scheme((use_dark()) ? slint::cbindgen_private::ColorScheme::Dark
                                                        : slint::cbindgen_private::ColorScheme::Light);
-        info->window().set_size(slint::LogicalSize{{520.f, input ? 270.f : confirm != "close-info" ? 220.f : 340.f}});
+        info->window().set_size(slint::LogicalSize{{520.f, input ? 306.f : confirm != "close-info" ? 256.f : title == "关于 DualTone" ? 500.f : 376.f}});
         info->show();
+        WindowFrame::install(info);
         SetForegroundWindow(info->window().win32_hwnd());
     }
     void action(std::string c, std::string value) {
@@ -417,18 +416,13 @@ class Ui {
                 auto cfg = host.command("get");
                 host.command("set", {{"source_id", cfg["target_id"]}, {"target_id", cfg["source_id"]}});
             } else if (c == "sync-settings") {
-                sync_window->show();
-                SetForegroundWindow(sync_window->window().win32_hwnd());
-            } else if (c == "close-sync") {
-                sync_window->hide();
+                dialog("播放方式", "虚拟声卡双路同步已撤回。主音频由 Windows 直接播放，副音频仍可独立调节。");
             } else if (c == "presets") {
-                preset_window->show(); SetForegroundWindow(preset_window->window().win32_hwnd());
+                preset_window->show(); WindowFrame::install(preset_window); SetForegroundWindow(preset_window->window().win32_hwnd());
             } else if (c == "close-presets") {
                 preset_window->hide();
             } else if (c == "theme") {
                 host.command("appearance", {{"theme", value}}); force_dark = force_light = false;
-            } else if (c == "routing-help") {
-                dialog("路由与同步", "双路同步先把声音送入虚拟音频入口，再分别输出到两台设备。固定输出设备的应用需选择同一个入口。\n\n主路延迟是手动补偿值，不是自动声学测量。正常停止或退出后恢复系统输出；强制结束时需在 Windows 中选择物理音箱。\n\n直出模式的数字测量可在 CLI 使用 latency；混响尾音不用于对齐。");
             } else if (c == "manage-select") {
                 managed_name = value; revision = UINT64_MAX;
             } else if (c == "manage-load") {
@@ -450,12 +444,13 @@ class Ui {
             } else if (c == "details") {
                 editor_visible = true;
                 editor->show();
+                WindowFrame::install(editor);
                 SetForegroundWindow(editor->window().win32_hwnd());
             } else if (c == "tray") {
                 main_visible = false;
                 editor_visible = false;
                 main->hide();
-                editor->hide(); sync_window->hide(); preset_window->hide(); info->hide();
+                editor->hide(); preset_window->hide(); info->hide();
             } else if (c == "preset")
                 host.command("preset", {{"name", value}});
             else if (c == "add-preset")
@@ -473,9 +468,7 @@ class Ui {
             else if (c == "diagnostics")
                 dialog("诊断", "");
             else if (c == "about")
-                dialog("关于 DualTone", "DualTone 0.5.1 · 原生轻量版\nC++ + Slint · "
-                                        "WASAPI\n\n支持主路直出或双路同步，副音频独立处理。\n支持旧配置迁移与 JSON CLI "
-                                        "v0.1。\n\nhttps://github.com/Wu-Tea/DualTone");
+                dialog("关于 DualTone", "DualTone 0.5.2\n主音频直出，副音频独立调节。\nhttps://github.com/Wu-Tea/DualTone");
             else if (c == "eq-reset")
                 host.command("set", {{"gains", std::vector<double>(10, 0)}});
             else if (c == "band-add") {
@@ -553,6 +546,10 @@ class Ui {
         tick();
     }
     void tick() {
+        if (main->window().is_visible()) WindowFrame::install(main);
+        if (editor->window().is_visible()) WindowFrame::install(editor);
+        if (preset_window->window().is_visible()) WindowFrame::install(preset_window);
+        if (info->window().is_visible()) WindowFrame::install(info);
         if (host.quitting) {
             slint::quit_event_loop();
             return;
@@ -565,8 +562,6 @@ class Ui {
         preset_window->set_scheme(dark ? slint::cbindgen_private::ColorScheme::Dark : slint::cbindgen_private::ColorScheme::Light);
         main->set_scheme(dark ? slint::cbindgen_private::ColorScheme::Dark
                               : slint::cbindgen_private::ColorScheme::Light);
-        sync_window->global<UiData>().set_dark(dark);
-        sync_window->set_scheme(dark ? slint::cbindgen_private::ColorScheme::Dark : slint::cbindgen_private::ColorScheme::Light);
         auto state = host.engine.status();
         auto cfg = host.store.current;
         if (revision != host.revision) {
@@ -611,7 +606,7 @@ class Ui {
             int managed_index = -1;
             for (size_t n = 0; n < names.size(); ++n) if (str(names[n]) == managed_name) managed_index = int(n);
             auto presets = model(names);
-            for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &sync_window->global<UiData>(), &preset_window->global<UiData>(), &info->global<UiData>()}) {
+            for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &preset_window->global<UiData>(), &info->global<UiData>()}) {
                 g->set_sync_mode(cfg["routing_mode"] == "sync");
                 g->set_main_delay(cfg["main_delay_ms"]);
                 g->set_input_index(0);
@@ -648,7 +643,7 @@ class Ui {
                 g->set_headroom(ss("余量 " + fmt(-d->preamp_db) + " dB"));
             }
         }
-        for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &sync_window->global<UiData>(), &preset_window->global<UiData>(), &info->global<UiData>()}) {
+        for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &preset_window->global<UiData>(), &info->global<UiData>()}) {
             g->set_dark(dark);
             g->set_theme_mode(ss(host.appearance["theme"]));
             g->set_active(host.engine.active);
@@ -684,7 +679,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         auto argv = CommandLineToArgvW(GetCommandLineW(), &argc);
         fs::path dir = executable_dir() / L"data", shot;
         double quit_after = 0;
-        bool details = false, dark = false, light = false, start = false, sync_settings = false, presets = false;
+        bool details = false, dark = false, light = false, start = false, sync_settings = false, presets = false, about = false;
         int width = 0, height = 0, editor_width = 0, editor_height = 0;
         for (int i = 1; i < argc; i++) {
             std::wstring a = argv[i];
@@ -694,6 +689,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                 details = true;
             else if (a == L"--sync-settings")
                 sync_settings = true;
+            else if (a == L"--about")
+                about = true;
             else if (a == L"--presets")
                 presets = true;
             else if (a == L"--light")
@@ -718,13 +715,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         LocalFree(argv);
         Ui ui(dir, dark, light);
         if (width || height)
-            ui.main->window().set_size(slint::LogicalSize{{float(width ? width : 460), float(height ? height : 510)}});
+            ui.main->window().set_size(slint::LogicalSize{{float(width ? width : 460), float(height ? height : 590)}});
         if (editor_width || editor_height)
             ui.editor->window().set_size(slint::LogicalSize{{float(editor_width ? editor_width : 980),
-                                                            float(editor_height ? editor_height : 860)}});
+                                                            float(editor_height ? editor_height : 896)}});
         if (details)
             ui.action("details", "");
         if (presets) ui.action("presets", "");
+        if (about) ui.action("about", "");
         if (sync_settings) ui.action("sync-settings", "");
         if (start)
             ui.action("toggle", "");
@@ -739,14 +737,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                            {"target_index", ui.main->global<UiData>().get_target_index()},
                            {"preset_index", ui.main->global<UiData>().get_preset_index()},
                            {"editor_preset_index", ui.editor->global<UiData>().get_preset_index()},
-                           {"sync_mode", ui.sync_window->global<UiData>().get_sync_mode()},
-                           {"main_delay_ms", ui.sync_window->global<UiData>().get_main_delay()},
-                           {"input_index", ui.sync_window->global<UiData>().get_input_index()},
+                           {"sync_mode", ui.main->global<UiData>().get_sync_mode()},
+                           {"main_delay_ms", ui.main->global<UiData>().get_main_delay()},
+                           {"input_index", ui.main->global<UiData>().get_input_index()},
                            {"reverb", ui.main->global<UiData>().get_reverb()},
                            {"reverb_size", ui.main->global<UiData>().get_reverb_size()},
                            {"reverb_decay", ui.main->global<UiData>().get_reverb_decay()}});
+                if (ui.info->window().is_visible()) snapshot(ui.info->window(), shot.parent_path() / (shot.stem().wstring() + L"-info.png"));
                 if (presets) snapshot(ui.preset_window->window(), shot.parent_path() / (shot.stem().wstring() + L"-presets.png"));
-                if (sync_settings) snapshot(ui.sync_window->window(), shot.parent_path() / (shot.stem().wstring() + L"-sync.png"));
                 if (details) {
                     auto p = shot.parent_path() / (shot.stem().wstring() + L"-details.png");
                     snapshot(ui.editor->window(), p);

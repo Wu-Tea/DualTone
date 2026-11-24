@@ -20,7 +20,7 @@ cl /nologo /std:c++20 /EHsc /O2 /utf-8 /MD /DNOMINMAX /DUNICODE /D_UNICODE cli.c
 if errorlevel 1 exit /b 1
 rc /nologo /fo build\app.res resources.rc
 if errorlevel 1 exit /b 1
-cl /nologo /std:c++20 /EHsc /O2 /utf-8 /MD /bigobj /DNOMINMAX /DUNICODE /D_UNICODE /Ivendor\slint\include\slint /Ibuild gui.cpp build\app.res build\settings.obj build\dsp.obj build\reverb.obj build\sync.obj build\audio.obj build\host.obj vendor\slint\lib\slint_cpp.dll.lib /Fobuild\ /Fe:dist\DualTone.exe /link /MANIFEST:NO /SUBSYSTEM:WINDOWS ole32.lib uuid.lib avrt.lib advapi32.lib bcrypt.lib shell32.lib comdlg32.lib gdiplus.lib user32.lib gdi32.lib
+cl /nologo /std:c++20 /EHsc /O2 /utf-8 /MD /bigobj /DNOMINMAX /DUNICODE /D_UNICODE /Ivendor\slint\include\slint /Ibuild gui.cpp build\app.res build\settings.obj build\dsp.obj build\reverb.obj build\sync.obj build\audio.obj build\host.obj vendor\slint\lib\slint_cpp.dll.lib /Fobuild\ /Fe:dist\DualTone.exe /link /MANIFEST:NO /SUBSYSTEM:WINDOWS ole32.lib uuid.lib avrt.lib advapi32.lib bcrypt.lib shell32.lib comdlg32.lib gdiplus.lib user32.lib gdi32.lib comctl32.lib dwmapi.lib
 if errorlevel 1 exit /b 1
 copy /y vendor\slint\lib\slint_cpp.dll dist\ >nul
 for %%f in (msvcp140.dll vcruntime140.dll vcruntime140_1.dll msvcp140_1.dll msvcp140_2.dll) do if exist "%VCToolsRedistDir%x64\Microsoft.VC143.CRT\%%f" copy /y "%VCToolsRedistDir%x64\Microsoft.VC143.CRT\%%f" dist\ >nul

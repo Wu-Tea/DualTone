@@ -1,6 +1,7 @@
 """Transport delay, clock drift, configuration lifecycle, GUI persistence."""
 import json, subprocess, tempfile, unittest
 import numpy as np
+from pathlib import Path
 from verify_native import ROOT, driver
 
 class SyncTests(unittest.TestCase):
@@ -45,7 +46,7 @@ class SyncTests(unittest.TestCase):
             def call(*args,ok=True):
                 p=subprocess.run([str(ROOT/'dist/DualToneCLI.exe'),'--data-dir',tmp,*args],capture_output=True,timeout=15)
                 r=json.loads(p.stdout);self.assertEqual(r['ok'],ok,r);return r.get('result')
-            call('set','--json','{"routing_mode":"sync","input_id":"virtual","main_delay_ms":40}')
+            call('set','--json','{"routing_mode":"sync","input_id":"virtual","main_delay_ms":40}',ok=False)
             call('preset-add','我的声音');call('export',str(directory/'preset.json'))
             call('set','--json','{"main_delay_ms":70,"gain":12}')
             call('preset','我的声音');self.assertEqual(call('get')['main_delay_ms'],70)
@@ -56,6 +57,28 @@ class SyncTests(unittest.TestCase):
             shot=directory/'gui.png'
             subprocess.run([str(ROOT/'dist/DualTone.exe'),'--data-dir',tmp,'--sync-settings','--screenshot',str(shot),'--quit-after','2.3'],timeout=15,check=True)
             visible=json.loads(shot.with_suffix('.json').read_text(encoding='utf-8'))
-            self.assertTrue(visible['sync_mode']);self.assertEqual(visible['main_delay_ms'],70)
+            self.assertFalse(visible['sync_mode']);self.assertEqual(visible['main_delay_ms'],70)
+
+    def test_retired_sync_config_rolls_back_without_losing_audio_parameters(self):
+        with tempfile.TemporaryDirectory(dir=ROOT/'qa') as tmp:
+            directory=Path(tmp)
+            cfg=driver(dict(command='validate',settings=dict(routing_mode='sync',input_id='virtual',source_id='main',target_id='aux',main_delay_ms=90,gain=23.5,spatial_strength=45)))['result']
+            original=json.dumps(dict(version=4,current=cfg,presets={'Old':cfg})).encode()
+            (directory/'settings.json').write_bytes(original)
+            def call(*args,ok=True):
+                p=subprocess.run([str(ROOT/'dist/DualToneCLI.exe'),'--data-dir',tmp,*args],capture_output=True,timeout=15)
+                r=json.loads(p.stdout);self.assertEqual(r['ok'],ok,r);return r.get('result')
+            now=call('get')
+            self.assertEqual(now['routing_mode'],'direct');self.assertEqual(now['main_delay_ms'],0)
+            self.assertEqual((directory/'settings.json').read_bytes(),original)
+            for k,v in cfg.items():
+                if k not in ('routing_mode','main_delay_ms'):self.assertEqual(now[k],v)
+            call('set','--json','{"gain":24}')
+            self.assertEqual((directory/'settings.v4.backup.json').read_bytes(),original)
+            self.assertEqual(json.loads((directory/'settings.json').read_text())['current']['routing_mode'],'direct')
+            call('preset','Old');self.assertEqual(call('get')['routing_mode'],'direct')
+            self.assertEqual(call('get')['gain'],23.5)
+            call('set','--json','{"routing_mode":"sync"}',ok=False)
+            self.assertEqual(call('schema')['routing']['modes'],['direct'])
 
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -42,6 +42,7 @@ class ReverbTests(unittest.TestCase):
                 self.assertTrue(handles)
                 hwnd=handles[0]
                 def click(x,y):
+                    y += 36  # Custom title bar is part of the client area.
                     point=x|(y<<16)
                     for msg,key in [(0x200,0),(0x201,1),(0x202,0)]:user.PostMessageW(hwnd,msg,key,point)
                     time.sleep(.2)

@@ -186,6 +186,13 @@ Store::Store(fs::path dir) : directory(fs::absolute(dir).lexically_normal()) {
         }
         current = c;
         presets = ps;
+        if (current["routing_mode"] == "sync") {
+            current["routing_mode"] = "direct";
+            current["main_delay_ms"] = 0;
+            // Preserve the complete pre-rollback file before the first write.
+            if (!migrate) migrate = version;
+            warning = "双路同步已撤回，已恢复主音频直出；副音频参数保留。";
+        }
     } catch (const std::exception &e) {
         failed = true;
         warning = std::string("旧配置无法读取，原文件保留：") + e.what();

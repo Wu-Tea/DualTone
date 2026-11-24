@@ -277,6 +277,8 @@ std::vector<std::array<double, 4>> Engine::spectrum_samples() {
     return {samples.begin(), samples.end()};
 }
 void Engine::start(std::shared_ptr<Dsp> v) {
+    if (v->cfg["routing_mode"] != "direct")
+        throw std::runtime_error("虚拟声卡双路同步已撤回，请使用主音频直出");
     if (active)
         throw std::runtime_error("音频正在运行");
     stop();

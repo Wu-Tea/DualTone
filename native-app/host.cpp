@@ -21,6 +21,8 @@ json Host::set(json patch) {
     if (store.failed)
         throw std::runtime_error(store.warning);
     auto cfg = merge(store.current, patch);
+    if (cfg["routing_mode"] != "direct")
+        throw std::runtime_error("虚拟声卡双路同步已撤回，请使用 direct 主音频直出");
     auto compiled = std::make_shared<Dsp>(cfg);
     if (cfg["source_id"] != "" && cfg["source_id"] == cfg["target_id"])
         throw std::runtime_error("主音频和副音频必须不同");
@@ -103,11 +105,10 @@ json Host::schema() {
               "start", "stop", "status", "latency", "pause", "import", "export", "shutdown", "serve",
               "schema"}},
             {"scope", "All DSP settings affect auxiliary output only."},
-            {"routing", {{"modes", {"direct", "sync"}}, {"default", "direct"},
+            {"routing", {{"modes", {"direct"}}, {"default", "direct"},
+                         {"retired_modes", {"sync"}},
                          {"main_device", "source_id"}, {"auxiliary_device", "target_id"},
-                         {"virtual_input", "input_id"}, {"delay_unit", "milliseconds"},
-                         {"jitter_buffer_ms", SyncQueueMs},
-                         {"semantics", "sync: virtual render loopback feeds both outputs; main_delay_ms adds main-only delay. Normal stop/error restores defaults if still owned. Communications unchanged. Effects and pause affect auxiliary only. Presets/import preserve routing."}}}};
+                         {"semantics", "Physical main output plays directly; Windows controls its volume. All effects and gain affect auxiliary only. Legacy sync configurations load as direct; new sync requests are rejected."}}}};
 }
 json Host::command(const std::string &c, const json &args) {
     std::lock_guard lock(mutex);

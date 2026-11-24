@@ -42,6 +42,7 @@ class StyleTests(unittest.TestCase):
             user=ctypes.WinDLL('user32',use_last_error=True)
             cb=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
             user.EnumWindows.argtypes=[cb,wintypes.LPARAM]
+            user.IsWindowVisible.argtypes=[wintypes.HWND]
             user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
             user.GetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int]
             user.PostMessageW.argtypes=[wintypes.HWND,wintypes.UINT,wintypes.WPARAM,wintypes.LPARAM]
@@ -50,7 +51,7 @@ class StyleTests(unittest.TestCase):
             def collect(hwnd,_):
                 pid=wintypes.DWORD();user.GetWindowThreadProcessId(hwnd,ctypes.byref(pid))
                 title=ctypes.create_unicode_buffer(128);user.GetWindowTextW(hwnd,title,128)
-                if pid.value==proc.pid and title.value=='DualTone':handles.append(hwnd)
+                if pid.value==proc.pid and title.value=='DualTone' and user.IsWindowVisible(hwnd):handles.append(hwnd)
                 return True
             try:
                 for _ in range(80):
@@ -60,10 +61,13 @@ class StyleTests(unittest.TestCase):
                 self.assertTrue(handles);hwnd=handles[0]
                 user.SetForegroundWindow.argtypes=[wintypes.HWND]
                 user.GetForegroundWindow.restype=wintypes.HWND
-                user.SetForegroundWindow(hwnd);time.sleep(.2)
+                user.keybd_event(0x12,0,0,0)
+                user.SetForegroundWindow(hwnd)
+                user.keybd_event(0x12,0,2,0);time.sleep(.2)
                 self.assertEqual(user.GetForegroundWindow(),hwnd)
                 user.keybd_event.argtypes=[wintypes.BYTE,wintypes.BYTE,wintypes.DWORD,ctypes.c_size_t]
                 def click(x,y):
+                    y += 36  # Custom title bar is part of the client area.
                     for msg,key in ((0x200,0),(0x201,1),(0x202,0)):user.PostMessageW(hwnd,msg,key,x|(y<<16))
                     time.sleep(.15)
                 def key(code):
@@ -74,12 +78,18 @@ class StyleTests(unittest.TestCase):
                 for code in (0x33,0x35,0xbe,0x35):key(code)
                 key(0x0d);time.sleep(.2)
                 self.assertEqual(call('get')['gain'],35.5)
+                # The restored quick parameter must reach persisted spatial DSP settings.
+                click(400,376);key(0x24)
+                for _ in range(8):key(0x2e)
+                for code in (0x31,0x30,0x30):key(code)
+                key(0x0d);time.sleep(.2)
+                self.assertAlmostEqual(call('get')['spatial_strength'],0,places=5)
                 # Popup keyboard: A then Down selects B, Enter commits the preset.
-                call('preset','A');time.sleep(.2);click(150,376)
+                call('preset','A');time.sleep(.2);click(150,426)
                 key(0x28);key(0x0d);time.sleep(.2)
                 self.assertEqual(call('get')['gain'],20)
                 # Escape must dismiss without changing the persisted value.
-                click(150,376);key(0x26);key(0x1b);time.sleep(.2)
+                click(150,426);key(0x26);key(0x1b);time.sleep(.2)
                 self.assertEqual(call('get')['gain'],20)
             finally:
                 if proc.poll() is None:call('shutdown');proc.wait(timeout=10)

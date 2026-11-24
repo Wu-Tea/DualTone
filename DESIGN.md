@@ -30,15 +30,13 @@ No reference assets, application code or hardware-specific defaults are copied.
 
 ## Task surfaces
 
-- Main: 460 × 510, minimum width 420. Only devices, auxiliary volume/mute,
-  effect selection and preset selection remain visible, with one sound editor
-  entry and one sync entry. No chart, duplicated processing toggles, unexplained
+- Main: 460 × 590 (including a 36 px custom caption), minimum width 420. Only devices, auxiliary volume/mute,
+  effect selection, one mode-specific quick parameter and preset selection remain
+  visible, with one complete sound editor entry. No chart, duplicated processing toggles, unexplained
   meters or software queue telemetry on the everyday surface.
-- Sound editor: 980 × 860, minimum 840 × 820. Effect parameters, editable spectrum,
+- Sound editor: 980 × 896, minimum 840 × 856. Effect parameters, editable spectrum,
   EQ and frequency filtering share one workspace. Effect selection on the main
   panel determines which parameters appear here.
-- Sync: 520 × 440. Direct playback or delay alignment controls are task-named.
-  Required virtual input and primary delay appear only for alignment.
 - Diagnostics: reachable from the menu, owns queue/meter feedback and digital
   latency measurement. Errors stay visible on the operational windows.
 - Presets: one management window for create, view/select/load, update from current
@@ -55,10 +53,11 @@ arrows perform a defined step; adjacent numbers provide exact entry. Invalid
 numbers produce a validation error. Selection is owned by persisted settings,
 not by a widget's first item. Empty and modified preset states are placeholders.
 
-Selecting a primary device keeps existing routing behavior. Changing sync
-endpoints requires stopped playback. EQ, multi-band filters, spatial processing,
-reverb and comparison mute remain auxiliary-only. The primary delay is available
-only in the existing optional sync route. Native title bars and tray behavior stay.
+Selecting a primary device keeps existing routing behavior. Changing the main endpoint requires stopped playback. EQ, multi-band filters, spatial processing,
+reverb and comparison mute remain auxiliary-only. The virtual-input sync route is withdrawn in v0.5.2; old sync configurations load
+as direct and keep sound parameters. Windows owns the physical main volume. Custom captions share the app palette. Native hit-testing retains drag, resize,
+maximize/restore, the system menu, and the maximize snap target. Main close exits
+cleanly; editor/manager close only hides that window. Tray behavior stays.
 
 ## Verification
 
@@ -67,3 +66,18 @@ main/editor windows, open pickers, populated/empty preset management and errors.
 Exercise numeric entry and picker keyboard events through Windows; validate
 preset CRUD and theme persistence through CLI, then check GUI state. Existing
 DSP, reverb, synchronization and shared GUI/CLI state regressions remain required.
+
+## Artwork and window integration
+
+`ui/assets/` contains compact built-in imagegen artwork (model revision not exposed):
+a double-wave application icon and an About-only illustration. PNG alpha is
+preserved, with a PNG-backed ICO for the executable and tray. These do not add
+runtime dependencies. Asset prompts and provenance are in ui/assets/README.md.
+
+`window_frame.hpp` replaces native frame painting using WM_NCCALCSIZE while
+retaining WS_THICKFRAME and Windows non-client hit testing. Theme-owned caption
+measurements are shared with Slint, scaled by the window DPI. Hooks are installed
+only once the lazy native HWND exists, and weak component references avoid an
+ownership cycle. Follow Microsoft custom-frame and snap-layout guidance:
+https://learn.microsoft.com/en-us/windows/win32/dwm/customframe
+https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/ui/apply-snap-layout-menu
