@@ -270,6 +270,7 @@ class Ui {
             if (c == 1) {
                 main_visible = true;
                 main->show();
+                if (IsIconic(main->window().win32_hwnd())) ShowWindow(main->window().win32_hwnd(), SW_RESTORE);
                 SetForegroundWindow(main->window().win32_hwnd());
             }
             if (c == 2)
@@ -302,7 +303,10 @@ class Ui {
             const auto key = str(owner), action = str(command);
             HWND hwnd = key == "main" ? main->window().win32_hwnd() : key == "editor" ? editor->window().win32_hwnd() : key == "presets" ? preset_window->window().win32_hwnd() : info->window().win32_hwnd();
             if (action == "close") PostMessageW(hwnd, WM_CLOSE, 0, 0);
-            else if (action == "minimize") ShowWindow(hwnd, SW_MINIMIZE);
+            else if (action == "minimize") {
+                if (key == "main") this->action("tray", "");
+                else ShowWindow(hwnd, SW_MINIMIZE);
+            }
             else if (action == "maximize") ShowWindow(hwnd, IsZoomed(hwnd) ? SW_RESTORE : SW_MAXIMIZE);
         });
         g.on_action(
@@ -468,7 +472,7 @@ class Ui {
             else if (c == "diagnostics")
                 dialog("诊断", "");
             else if (c == "about")
-                dialog("关于 DualTone", "DualTone 0.5.2\n主音频直出，副音频独立调节。\nhttps://github.com/Wu-Tea/DualTone");
+                dialog("关于 DualTone", "DualTone 0.5.3\n主音频直出，副音频独立调节。\nhttps://github.com/Wu-Tea/DualTone");
             else if (c == "eq-reset")
                 host.command("set", {{"gains", std::vector<double>(10, 0)}});
             else if (c == "band-add") {

@@ -56,8 +56,9 @@ not by a widget's first item. Empty and modified preset states are placeholders.
 Selecting a primary device keeps existing routing behavior. Changing the main endpoint requires stopped playback. EQ, multi-band filters, spatial processing,
 reverb and comparison mute remain auxiliary-only. The virtual-input sync route is withdrawn in v0.5.2; old sync configurations load
 as direct and keep sound parameters. Windows owns the physical main volume. Custom captions share the app palette. Native hit-testing retains drag, resize,
-maximize/restore, the system menu, and the maximize snap target. Main close exits
-cleanly; editor/manager close only hides that window. Tray behavior stays.
+maximize/restore, the system menu, and the maximize snap target. Main minimize hides the application to tray without stopping the host or audio.
+The tray callback restores the main window. Main close exits cleanly;
+editor/manager close only hides that window, and their minimize remains native.
 
 ## Verification
 

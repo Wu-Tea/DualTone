@@ -1,6 +1,6 @@
 # DualTone · 原生轻量主副音频工具
 
-[下载 Windows 免安装版](https://github.com/Wu-Tea/DualTone/releases/tag/v0.5.2) · [完整使用说明](native-app/README.md) · [版本说明](native-app/RELEASE_NOTES.md)
+[下载 Windows 免安装版](https://github.com/Wu-Tea/DualTone/releases/tag/v0.5.3) · [完整使用说明](native-app/README.md) · [版本说明](native-app/RELEASE_NOTES.md)
 
 把 Windows 主音频的播放内容处理后送到另一台设备，用来补充环境细节。主音频由 Windows 直接播放，音量键控制物理主设备；DualTone 仅处理副音频。
 
@@ -8,7 +8,7 @@ v0.5 使用 **C++20、Slint 原生 UI 和原生 WASAPI**，不再打包 Python�
 
 ## 功能
 
-- v0.5.2 撤回虚拟声卡双路同步，旧同步配置恢复直出并保留副路参数；保留新版 UI。
+- v0.5.2 起撤回虚拟声卡双路同步，旧同步配置恢复直出并保留副路参数；保留新版 UI。
 - 重做的统一外观：深灰材质、浅蓝选中态、对齐的数值与单位；主面板、声音调节和预设窗口共用控件。支持深色、浅色、跟随系统。
 - 主副设备选择、交换、刷新；直出模式播放中可切换副设备。在直出模式选择主音频时同步 Windows 普通及多媒体默认输出，通信设备不变。
 - 默认空间补充与中心声量、副路音量、静音对比；新增[副路混响](docs/auxiliary-reverb.md)，可调空间大小、尾音时长和明暗，主路不受混响效果处理。
@@ -43,7 +43,7 @@ v0.5 使用 **C++20、Slint 原生 UI 和原生 WASAPI**，不再打包 Python�
 cd native-app
 .\bootstrap.ps1
 cmd /c build.cmd
-.\package.ps1 -Version 0.5.2
+.\package.ps1 -Version 0.5.3
 ```
 
 原生源码在 [`native-app/`](native-app/)，许可证随发布包提供。数值回归以保留的 v0.1 Python 实现为参考，覆盖 DSP、全部受支持采样率与分包边界、配置迁移及 GUI/CLI 共享状态；实际路由另用隔离配置和数字静音验证。运行版不依赖这些 Python 测试工具。

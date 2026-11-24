@@ -172,11 +172,12 @@ export component Meter inherits Rectangle {
 // Native hit testing owns drag, resize and the Windows 11 maximize flyout.
 export component CaptionButton inherits Rectangle {
     in property <string> kind;
+    in property <bool> minimize-to-tray;
     in property <bool> maximized;
     in property <bool> native-hover;
     callback invoked;
     width: Theme.caption-button-width;height: Theme.caption-height;
-    accessible-role: button;accessible-label: kind=="close" ? "关闭" : kind=="minimize" ? "最小化" : maximized ? "还原" : "最大化";
+    accessible-role: button;accessible-label: kind=="close" ? "关闭" : kind=="minimize" ? (minimize-to-tray ? "最小化到托盘" : "最小化") : maximized ? "还原" : "最大化";
     background: touch.has-hover || native-hover ? (kind=="close" ? #c84b55 : Theme.hover) : transparent;
     Path {x: (parent.width - 10px)/2;y: (parent.height - 10px)/2;width: 10px;height: 10px;
         commands: root.kind=="close" ? "M 0 0 L 10 10 M 0 10 L 10 0" : root.kind=="minimize" ? "M 0 5 L 10 5" : root.maximized ? "M 2 0 L 10 0 L 10 8 M 0 2 L 8 2 L 8 10 L 0 10 Z" : "M 0 0 L 10 0 L 10 10 L 0 10 Z";
@@ -188,13 +189,14 @@ export component CaptionButton inherits Rectangle {
 }
 export component TitleBar inherits Rectangle {
     in property <string> caption;
+    in property <bool> minimize-to-tray;
     in property <bool> maximized;
     in property <bool> max-hover;
     callback command(string);
     height: Theme.caption-height;
     Muted {x: 20px;width: parent.width - 3*Theme.caption-button-width - 30px;height: parent.height;text: root.caption;}
     Row {x: parent.width - 3*Theme.caption-button-width;width: 3*Theme.caption-button-width;height: parent.height;spacing: 0px;
-        CaptionButton {kind: "minimize";invoked => {root.command("minimize");}}
+        CaptionButton {kind: "minimize";minimize-to-tray: root.minimize-to-tray;invoked => {root.command("minimize");}}
         CaptionButton {kind: "maximize";maximized: root.maximized;native-hover: root.max-hover;invoked => {root.command("maximize");}}
         CaptionButton {kind: "close";invoked => {root.command("close");}}
     }

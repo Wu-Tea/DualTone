@@ -109,7 +109,7 @@ export component MainWindow inherits Window {
     default-font-family: "Microsoft YaHei UI";default-font-size: Theme.font;
     in-out property <ColorScheme> scheme <=> Palette.color-scheme;
     Foundation {width: parent.width;height: parent.height;}
-    TitleBar {x: 0px;y: 0px;width: parent.width;caption: "";maximized: root.maximized;max-hover: UiData.caption-max-hover;command(kind) => {UiData.window-action("main",kind);}}
+    TitleBar {x: 0px;y: 0px;width: parent.width;caption: "";minimize-to-tray: true;maximized: root.maximized;max-hover: UiData.caption-max-hover;command(kind) => {UiData.window-action("main",kind);}}
     VerticalLayout {y: Theme.caption-height;width: parent.width;height: parent.height - Theme.caption-height;padding: Theme.page-inset;spacing: 14px;
         Row {height: 38px;spacing: 10px;
             Image {source: UiData.logo;width: 30px;height: 30px;}

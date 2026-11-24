@@ -17,6 +17,18 @@ class FrameTests(unittest.TestCase):
             u.GetClientRect.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.RECT)]
             u.ClientToScreen.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.POINT)]
             u.ShowWindow.argtypes=[wintypes.HWND,ctypes.c_int]
+            u.FindWindowExW.argtypes=[wintypes.HWND,wintypes.HWND,wintypes.LPCWSTR,wintypes.LPCWSTR]
+            u.FindWindowExW.restype=wintypes.HWND
+            def command(*args):
+                r=json.loads(subprocess.check_output([str(ROOT/'dist/DualToneCLI.exe'),'--data-dir',folder,*args]))
+                self.assertTrue(r['ok'],r);return r['result']
+            def tray_handle():
+                child=None
+                while True:
+                    child=u.FindWindowExW(wintypes.HWND(-3),child,'DualToneNativeTray',None)
+                    if not child:self.fail('Tray callback window missing')
+                    pid=wintypes.DWORD();u.GetWindowThreadProcessId(child,ctypes.byref(pid))
+                    if pid.value==proc.pid:return child
             windows={}
             @cb
             def collect(h,_):
@@ -39,7 +51,21 @@ class FrameTests(unittest.TestCase):
                 self.assertEqual(hit(main,120,18),2) # HTCAPTION
                 self.assertEqual(hit(main,1,1),13) # HTTOPLEFT
                 self.assertEqual(hit(main,rect.right-69,18),9) # HTMAXBUTTON / snap target
-                click(main,rect.right-115,18);self.assertTrue(u.IsIconic(main));u.ShowWindow(main,9)
+                # Subwindows minimize normally; the main caption must hide to tray.
+                er=wintypes.RECT();u.GetClientRect(editor,ctypes.byref(er))
+                click(editor,er.right-115,18);self.assertTrue(u.IsIconic(editor));u.ShowWindow(editor,9)
+                command('set','--json','{"gain":17.5}')
+                before=command('get');state=command('status')
+                for _ in range(2):
+                    click(main,rect.right-115,18)
+                    self.assertFalse(u.IsWindowVisible(main));self.assertFalse(u.IsWindowVisible(editor))
+                    self.assertIsNone(proc.poll());self.assertTrue(command('status')['running'])
+                    self.assertEqual(command('get'),before)
+                    self.assertEqual(command('status')['audio']['state'],state['audio']['state'])
+                    # Exercise the same callback emitted by the notification icon.
+                    u.PostMessageW(tray_handle(),0x8001,1,0x203);time.sleep(.3)
+                    self.assertTrue(u.IsWindowVisible(main));self.assertFalse(u.IsIconic(main))
+                click(main,220,527);self.assertTrue(u.IsWindowVisible(editor))
                 u.PostMessageW(main,0xa1,9,0);u.PostMessageW(main,0xa2,9,0);time.sleep(.3)
                 self.assertTrue(u.IsZoomed(main))
                 u.PostMessageW(main,0xa1,9,0);u.PostMessageW(main,0xa2,9,0);time.sleep(.3)
