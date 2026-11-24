@@ -283,6 +283,10 @@ void Engine::start(std::shared_ptr<Dsp> v) {
     if (v->cfg["source_id"] == v->cfg["target_id"] || v->cfg["target_id"] == "" ||
         v->cfg["source_id"] == "")
         throw std::runtime_error("请选择两个不同的音频设备");
+    if (v->cfg["routing_mode"] == "sync" &&
+        (v->cfg["input_id"] == "" || v->cfg["input_id"] == v->cfg["source_id"] ||
+         v->cfg["input_id"] == v->cfg["target_id"]))
+        throw std::runtime_error("请选择独立的虚拟音频入口");
     update(v);
     stop_flag = false;
     active = true;
@@ -312,6 +316,9 @@ void Engine::run() {
         DWORD index = 0;
         task = AvSetMmThreadCharacteristicsW(L"Pro Audio", &index);
         auto d = dsp.load();
+        if (d->cfg["routing_mode"] == "sync") {
+            run_sync();
+        } else {
         Stream output(d->cfg["target_id"], false), input(d->cfg["source_id"], true);
         Resampler in(input.rate, ProcessingRate), out(ProcessingRate, output.rate);
         Processor processor;
@@ -402,6 +409,7 @@ void Engine::run() {
                               {"input_peak", 0.0},
                               {"output_peak", 0.0}});
         }
+    }
     } catch (const std::exception &ex) {
         std::lock_guard l(mutex);
         telemetry.update({{"state", "error"},
@@ -415,7 +423,129 @@ void Engine::run() {
         CloseHandle(singleton);
     active = false;
 }
+// Routing ownership is scoped to playback. Only restore defaults still pointing
+// at our ingress; never overwrite a user's subsequent device selection.
+void Engine::run_sync() {
+    auto initial = dsp.load();
+    const auto cfg = initial->cfg;
+    const std::string ingress = cfg["input_id"];
+    Stream input(ingress, true), main(cfg["source_id"], false), auxiliary(cfg["target_id"], false);
+    std::array<std::string, 2> saved{default_output(0), default_output(1)};
+    for (auto &id : saved) if (id == ingress) id = cfg["source_id"];
+    bool routing_owned = false;
+    auto restore = [&] {
+        if (!routing_owned) return;
+        std::string errors;
+        for (int role = 0; role < 2; ++role) {
+            try {
+                if (default_output(role) == ingress) set_default(saved[role], role);
+            } catch (const std::exception &e) { errors += std::string(e.what()) + " "; }
+        }
+        routing_owned = false;
+        if (!errors.empty()) throw std::runtime_error("恢复 Windows 输出失败，请在系统中选择主音箱：" + errors);
+    };
+    try {
+        Resampler incoming(input.rate, ProcessingRate), main_resample(ProcessingRate, main.rate),
+                  auxiliary_resample(ProcessingRate, auxiliary.rate);
+        ClockQueue main_queue(main.rate), auxiliary_queue(auxiliary.rate);
+        MainDelay delay(cfg["main_delay_ms"]);
+        Processor processor; processor.update(initial);
+        main.start(); auxiliary.start(); input.start();
+        // Both outputs are open before switching any application to the ingress.
+        routing_owned = true;
+        sync_main(ingress);
+        double begin = clock_seconds(), last_feed = begin, max_dsp = 0;
+        int blocks = 0, synthetic = 0;
+        auto feed = [&](std::vector<double> raw, bool silence) {
+            auto start = clock_seconds();
+            auto current = dsp.load();
+            auto data = incoming.process(raw);
+            auto original = data;
+            double ip = 0, op = 0;
+            for (auto x : data) ip = std::max(ip, std::abs(x));
+            auto dry = data;
+            delay.process(dry, current->cfg["main_delay_ms"]);
+            main_queue.push(main_resample.process(dry));
+            processor.update(current);
+            processor.process(data, paused);
+            auxiliary_queue.push(auxiliary_resample.process(data));
+            for (auto x : data) op = std::max(op, std::abs(x));
+            auto elapsed = (clock_seconds() - start) * 1000;
+            max_dsp = std::max(max_dsp, elapsed);
+            std::lock_guard lock(mutex);
+            if (analysis.load()) {
+                for (size_t i = 0; i < data.size(); i += 2)
+                    samples.push_back({original[i], original[i + 1], data[i], data[i + 1]});
+                while (samples.size() > AnalysisFrames) samples.pop_front();
+            }
+            telemetry.update({{"blocks", ++blocks}, {"input_peak", ip}, {"output_peak", op},
+                              {"dsp_ms", elapsed}, {"dsp_max_ms", max_dsp},
+                              {"synthetic_packets", synthetic += silence},
+                              {"main_delay_ms", current->cfg["main_delay_ms"]}});
+        };
+        auto render = [&](Stream &output, ClockQueue &queue) {
+            auto count = std::min(output.capacity - output.padding(), output.rate * SyncPacketMs / 1000);
+            if (!count) return;
+            auto data = queue.pull(count);
+            BYTE *buffer = nullptr;
+            check(output.render->GetBuffer(count, &buffer));
+            for (size_t i = 0; i < data.size(); ++i) reinterpret_cast<float *>(buffer)[i] = float(data[i]);
+            check(output.render->ReleaseBuffer(count, 0));
+        };
+        {
+            std::lock_guard lock(mutex);
+            telemetry.update({{"state", "running"}, {"message", "双路同步"}, {"routing_mode", "sync"},
+                {"source_rate", input.rate}, {"main_rate", main.rate}, {"target_rate", auxiliary.rate},
+                {"processing_rate", ProcessingRate}, {"jitter_buffer_ms", SyncQueueMs},
+                {"source_timestamp_valid", false}, {"scheduler", "independent event-driven render queues"}});
+        }
+        HANDLE events[] = {input.ready, main.ready, auxiliary.ready};
+        while (!stop_flag) {
+            while (auto packet = input.read()) {
+                {
+                    std::lock_guard lock(mutex);
+                    telemetry["capture_packet_ms"] = packet->data.size() * 500. / input.rate;
+                }
+                feed(std::move(packet->data), false);
+                last_feed = clock_seconds();
+                if (stop_flag) break;
+            }
+            // When loopback stops delivering packets, clock silence through the
+            // delay line so final main samples and auxiliary reverb can finish.
+            while (clock_seconds() - last_feed >= SyncPacketMs / 1000. &&
+                std::min(main_queue.milliseconds(), auxiliary_queue.milliseconds()) < SyncQueueMs + SyncPacketMs) {
+                feed(std::vector<double>(input.rate * SyncPacketMs / 1000 * ChannelCount), true);
+                last_feed += SyncPacketMs / 1000.;
+            }
+            render(main, main_queue);
+            render(auxiliary, auxiliary_queue);
+            {
+                std::lock_guard lock(mutex);
+                telemetry.update({{"uptime", clock_seconds() - begin},
+                    {"queue_ms", auxiliary_queue.milliseconds() + auxiliary.padding() * 1000. / auxiliary.rate},
+                    {"main_queue_ms", main_queue.milliseconds() + main.padding() * 1000. / main.rate},
+                    {"main_clock_ppm", main_queue.correction * 1e6},
+                    {"auxiliary_clock_ppm", auxiliary_queue.correction * 1e6},
+                    {"main_underruns", main_queue.underruns}, {"auxiliary_underruns", auxiliary_queue.underruns},
+                    {"discontinuities", input.discontinuities}});
+            }
+            WaitForMultipleObjects(3, events, FALSE, SyncPacketMs);
+        }
+        check(main.audio->Stop()); main.started = false;
+        check(auxiliary.audio->Stop()); auxiliary.started = false;
+        restore();
+        std::lock_guard lock(mutex);
+        telemetry.update({{"state", "stopped"}, {"message", "已停止并恢复系统输出"},
+                          {"queue_ms", 0.}, {"main_queue_ms", 0.}, {"input_peak", 0.}, {"output_peak", 0.}});
+    } catch (const std::exception &e) {
+        std::string reason = e.what();
+        try { restore(); } catch (const std::exception &r) { reason += std::string("；") + r.what(); }
+        throw std::runtime_error(reason);
+    }
+}
 json measure_latency(const json &cfg, bool probe) {
+    if (cfg.value("routing_mode", "direct") == "sync")
+        throw std::runtime_error("双路同步请使用主路延迟试听调节；旧数字转发测量仅适用于直出模式");
     if (cfg.value("effect_mode", "space") == "reverb")
         throw std::runtime_error("混响包含有意加入的反射与尾音；请切回空间补充后测量转发延迟");
     ComScope com;

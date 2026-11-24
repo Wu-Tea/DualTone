@@ -8,6 +8,11 @@ export global UiData {
     in-out property <bool> eq-on: true;
     in-out property <bool> band-on: true;
     in-out property <float> gain: 8;
+    in-out property <bool> sync-mode: false;
+    in-out property <float> main-delay: 0;
+    in-out property <float> max-delay: 1000;
+    in-out property <int> input-index: 0;
+    in-out property <string> sync-status: "";
     in-out property <bool> reverb: false;
     in-out property <float> reverb-size: 40;
     in-out property <float> reverb-decay: 1.2;
@@ -166,11 +171,11 @@ export component MainWindow inherits Window {
         }
         Rectangle {background: UiData.dark ? #242c32 : white;border-color: UiData.dark ? #3b454d : #dfe5e9;border-width: 1px;border-radius: 12px;height: 160px;
             VerticalLayout {padding: 12px;spacing: 6px;
-                Row {height: 18px;padding-left: 48px;Muted {text: "主音频";horizontal-stretch: 1;}Action {text: "交换";min-height: 18px;min-width: 36px;enabled: !UiData.active;clicked => {UiData.action("swap","");}}}
+                Row {height: 18px;padding-left: 48px;Muted {text: "主音频";horizontal-stretch: 1;}Action {text: "同步设置";min-height: 18px;min-width: 64px;clicked => {UiData.action("sync-settings","");}}Action {text: "交换";min-height: 18px;min-width: 36px;enabled: !UiData.active;clicked => {UiData.action("swap","");}}}
                 Row {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.source-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.source-index;enabled: !UiData.active;selected(value) => {UiData.action("source",value);}}}
                 Rectangle {height: 1px;background: UiData.dark ? #3b454d : #dfe5e9;}
                 Row {height: 18px;padding-left: 48px;Muted {text: "副音频";horizontal-stretch: 1;}Action {text: "刷新";min-height: 18px;min-width: 36px;clicked => {UiData.action("refresh","");}}}
-                Row {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.target-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.target-index;selected(value) => {UiData.action("target",value);}}}
+                Row {height: 36px;spacing: 12px;Image {width: 24px;height: 24px;source: UiData.target-icon;}ComboBox {horizontal-stretch: 1;model: UiData.device-labels;current-index <=> UiData.target-index;enabled: !UiData.active || !UiData.sync-mode;selected(value) => {UiData.action("target",value);}}}
             }
         }
         VerticalLayout {spacing: 2px;
@@ -233,7 +238,7 @@ export component EditorWindow inherits Window {
     VerticalLayout {padding: 20px;spacing: 14px;
         Row {height: 40px;spacing: 12px;Image {source: UiData.sliders-icon;width: 24px;height: 24px;}Label {text: "声音调节";font-size: 18px;font-weight: 600;horizontal-stretch: 1;}Presets {min-width: 190px;}Action {text: "新增预设";filled: true;min-width: 88px;clicked => {UiData.action("add-preset","");}}Action {text: "删除预设";filled: true;min-width: 88px;enabled: UiData.preset-index>=0;clicked => {UiData.action("delete-preset","");}}Action {text: "更多";filled: true;clicked => {more.show();}}
             more := PopupWindow {width: 158px;height: 136px;y: 40px; Rectangle {background: #29343c;width: parent.width;height: parent.height;}
-                VerticalLayout {padding: 6px;spacing: 2px;Action {text: "导入预设…";clicked => {more.close();UiData.action("import","");}}Action {text: "导出预设…";clicked => {more.close();UiData.action("export","");}}Action {text: "数字延迟测量";enabled: !UiData.reverb;clicked => {more.close();UiData.action("latency","");}}}
+                VerticalLayout {padding: 6px;spacing: 2px;Action {text: "导入预设…";clicked => {more.close();UiData.action("import","");}}Action {text: "导出预设…";clicked => {more.close();UiData.action("export","");}}Action {text: "数字延迟测量";enabled: !UiData.reverb && !UiData.sync-mode;clicked => {more.close();UiData.action("latency","");}}}
             }
         }
         Rectangle {height: 1px;background: #3b454d;}
@@ -282,4 +287,38 @@ export component InfoWindow inherits Window {
         Action {text: UiData.dialog-input ? "保存预设" : "关闭";filled: true;clicked => {UiData.action(UiData.dialog-input ? "confirm-preset" : "close-info",root.name);}}
     }
     in-out property <string> name;
+}
+
+export component SyncWindow inherits Window {
+    title: "DualTone · 同步设置";preferred-width: 480px;preferred-height: 410px;
+    min-width: 440px;min-height: 410px;
+    default-font-family: "Microsoft YaHei UI";default-font-size: 12px;
+    background: UiData.dark ? #1c2329 : #f1f4f6;
+    in-out property <ColorScheme> scheme <=> Palette.color-scheme;
+    VerticalLayout {padding: 20px;spacing: 12px;
+        Row {height: 30px;Label {text: "播放方式";font-size: 18px;font-weight: 600;horizontal-stretch: 1;}Muted {text: UiData.active ? "停止后可切换路由" : "";}}
+        Row {height: 36px;spacing: 8px;
+            Action {text: "主路直出";filled: true;selected: !UiData.sync-mode;enabled: !UiData.active;horizontal-stretch: 1;clicked => {UiData.setting("routing_mode","\"direct\"");}}
+            Action {text: "双路同步";filled: true;selected: UiData.sync-mode;enabled: !UiData.active;horizontal-stretch: 1;clicked => {UiData.setting("routing_mode","\"sync\"");}}
+        }
+        if UiData.sync-mode: VerticalLayout {spacing: 10px;
+            Row {height: 22px;Label {text: "虚拟音频入口";font-weight: 600;horizontal-stretch: 1;}Action {text: "清除";enabled: !UiData.active;min-height: 22px;min-width: 40px;clicked => {UiData.setting("input_id","\"\"");}}Action {text: "刷新";min-height: 22px;clicked => {UiData.action("refresh","");}}}
+            ComboBox {height: 36px;model: UiData.device-labels;current-index <=> UiData.input-index;enabled: !UiData.active;selected(value) => {UiData.action("input",value);}}
+            Row {height: 32px;spacing: 8px;
+                Label {text: "主路延迟";font-weight: 600;horizontal-stretch: 1;}
+                Action {text: "−5";filled: true;min-width: 38px;min-height: 30px;clicked => {UiData.setting("main_delay_ms","\{max(0, UiData.main-delay - 5)}");}}
+                NumEdit {value: "\{round(UiData.main-delay*10)/10}";label: "主路延迟（毫秒）";width: 72px;submitted(v) => {UiData.setting("main_delay_ms",v);}}
+                Muted {text: "ms";}
+                Action {text: "+5";filled: true;min-width: 38px;min-height: 30px;clicked => {UiData.setting("main_delay_ms","\{min(UiData.max-delay, UiData.main-delay + 5)}");}}
+            }
+            Fader {value: UiData.main-delay;maximum: UiData.max-delay;step: 1;label: "主路延迟";edited(v) => {UiData.setting("main_delay_ms","\{round(v)}");}}
+            Muted {text: "数值越大，主音频越晚播放。可边听边调。";height: 20px;}
+            Muted {text: "应用输出需跟随系统，或选择上面的虚拟入口。";height: 20px;}
+        }
+        if !UiData.sync-mode: Label {text: "主音频直接播放，DualTone 只处理副音频。";wrap: word-wrap;}
+        Rectangle {vertical-stretch: 1;}
+        if UiData.issue != "": Text {text: UiData.issue;color: UiData.dark ? #ffb6aa : #a52c20;font-size: 11px;wrap: word-wrap;max-height: 45px;}
+        Muted {text: UiData.sync-status;height: 22px;}
+        Row {height: 32px;Muted {text: "正常停止或退出后恢复系统输出";horizontal-stretch: 1;}Action {text: "完成";filled: true;clicked => {UiData.action("close-sync","");}}}
+    }
 }

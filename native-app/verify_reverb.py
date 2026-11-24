@@ -101,11 +101,11 @@ class ReverbTests(unittest.TestCase):
             patch={'effect_mode':'reverb','reverb_size':72,'reverb_decay':2.3,'reverb_brightness':21}
             call('set','--json',json.dumps(patch));call('preset-add','混响')
             self.assertEqual((directory/'settings.v2.backup.json').read_bytes(),original)
-            self.assertEqual(json.loads((directory/'settings.json').read_text(encoding="utf-8"))['version'],3)
+            self.assertEqual(json.loads((directory/'settings.json').read_text(encoding="utf-8"))['version'],4)
             call('set','--json','{"effect_mode":"space"}');call('preset','混响')
             for k,v in patch.items():self.assertEqual(call('get')[k],v)
             f=str(directory/'export.json');call('export',f);call('import',f)
-            self.assertEqual(json.loads(Path(f).read_text(encoding="utf-8"))['version'],3)
+            self.assertEqual(json.loads(Path(f).read_text(encoding="utf-8"))['version'],4)
             call('preset','旧预设');self.assertEqual(call('get')['effect_mode'],'space')
 
 if __name__=='__main__':unittest.main(verbosity=2)

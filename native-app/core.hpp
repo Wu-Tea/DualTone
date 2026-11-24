@@ -23,7 +23,32 @@ namespace fs = std::filesystem;
 using Microsoft::WRL::ComPtr;
 using Complex = std::complex<double>;
 inline constexpr int ProcessingRate = 48000, ChannelCount = 2, EqCount = 10, MaxBands = 8,
-                     ConfigVersion = 3;
+                     ConfigVersion = 4;
+// Sync latency is separate from effect timing. Units are milliseconds unless named otherwise.
+inline constexpr double MaxMainDelayMs = 1000, SyncQueueMs = 20, SyncQueueLimitMs = 250,
+                        SyncMaxClockCorrection = .002, SyncClockTimeSeconds = 1;
+inline constexpr int SyncPacketMs = 10, DelayTransitionFrames = 480;
+inline constexpr std::array<const char *, 5> RoutingKeys = {
+    "source_id", "target_id", "input_id", "routing_mode", "main_delay_ms"};
+struct MainDelay {
+    std::vector<std::array<double, 2>> ring;
+    size_t position = 0;
+    double delay = 0, previous = 0, requested = 0;
+    int transition = 0;
+    explicit MainDelay(double ms);
+    void process(std::vector<double> &samples, double ms);
+};
+// Per-endpoint clock adaptation; bounded queue, explicit underrun recovery.
+struct ClockQueue {
+    std::deque<std::array<double, 2>> frames;
+    int rate, underruns = 0;
+    bool primed = false;
+    double position = 0, correction = 0, error = 0;
+    explicit ClockQueue(int r) : rate(r) {}
+    void push(const std::vector<double> &samples);
+    std::vector<double> pull(size_t count);
+    double milliseconds() const { return frames.size() * 1000. / rate; }
+};
 inline constexpr size_t MaxConfigBytes = 128 * 1024, MaxPresets = 100, MaxNameLength = 60;
 inline constexpr double EqLimitDb = 12, MidCutDb = 12, HeadroomDb = 1, EqQ = 1.4;
 inline constexpr int SpatialRampFrames = 480, IdleWaitMs = 100, ControlTimeoutMs = 5000,
@@ -133,6 +158,7 @@ struct Engine {
     json status();
     std::vector<std::array<double, 4>> spectrum_samples();
     void run();
+    void run_sync();
 };
 struct Host {
     Store store;

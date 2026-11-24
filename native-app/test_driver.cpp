@@ -74,6 +74,30 @@ int main() {
                 energies.push_back({left,right});
             }
             output["energy_100ms"]=energies;output["first_frame"]=first;output["peak"]=peak;
+        } else if (command == "delay") {
+            MainDelay delay(input.value("delay_ms", 0.));
+            std::vector<double> rendered;
+            for (auto &segment : input.at("segments")) {
+                auto data = segment.at("samples").get<std::vector<double>>();
+                delay.process(data, segment.value("delay_ms", input.value("delay_ms", 0.)));
+                rendered.insert(rendered.end(), data.begin(), data.end());
+            }
+            output["samples"] = rendered;
+        } else if (command == "clock-queue") {
+            ClockQueue queue(ProcessingRate);
+            double phase = 0, largest = 0;
+            double speed = input.value("speed", 1.);
+            for (int n = 0; n < input.value("packets", 60000); ++n) {
+                phase += 480 * speed;
+                int count = int(phase); phase -= count;
+                queue.push(std::vector<double>(count * 2, .1));
+                auto data = queue.pull(480);
+                for (auto x : data) if (!std::isfinite(x) || x < 0 || x > .100001)
+                    throw std::runtime_error("clock interpolation corrupted samples");
+                largest = std::max(largest, queue.milliseconds());
+            }
+            output = {{"underruns", queue.underruns}, {"queue_ms", queue.milliseconds()},
+                      {"largest_ms", largest}, {"correction_ppm", queue.correction * 1e6}};
         } else if (command == "validate")
             output = validate(input.at("settings"));
         else if (command == "pipe")

@@ -81,3 +81,13 @@ using a shared parameter row with a fixed label and right-aligned value column.
 The existing auxiliary volume is the wet amount. Mode selection does not alter
 old EQ, filter, body-retention or device settings. Reverb input processing is
 labeled separately; the graph shows EQ/filter response, not the FDN response.
+
+
+v0.4: Keep the compact panel geometry. A single 同步设置 entry in the main-device
+caption opens a separate 480 × 410 settings window. Direct and dual-route modes
+are mutually exclusive. Only sync mode shows virtual ingress selection and
+main delay (numeric milliseconds, ±5 ms buttons, keyboard-accessible fader).
+Transport settings are local routing, not sound presets. Device changes require
+stopped playback in sync mode. Effects and comparison mute remain auxiliary-only;
+main now optionally uses an independent delayed render queue. Status distinguishes
+同步中 from ordinary 补声中. Restore owned default roles on normal stop/error.

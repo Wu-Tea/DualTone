@@ -59,8 +59,7 @@ int cli_main(int argc, wchar_t **argv) {
             if (doc.at("version") < 1 || doc.at("version") > ConfigVersion)
                 throw std::runtime_error("不支持的预设版本");
             args = validate(doc.at("settings"));
-            args.erase("source_id");
-            args.erase("target_id");
+            for (auto key : RoutingKeys) args.erase(key);
             command = "set";
         }
         if (cmd == "export") {

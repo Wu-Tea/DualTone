@@ -17,8 +17,11 @@ json Host::set(json patch) {
         throw std::runtime_error("主音频和副音频必须不同");
     bool source_changed = cfg["source_id"] != store.current["source_id"],
          target_changed = cfg["target_id"] != store.current["target_id"];
-    if (engine.active && source_changed)
-        throw std::runtime_error("切换主音频前请先停止补声");
+    bool route_changed = cfg["routing_mode"] != store.current["routing_mode"] ||
+                         cfg["input_id"] != store.current["input_id"];
+    if (engine.active && (source_changed || route_changed ||
+                         (target_changed && cfg["routing_mode"] == "sync")))
+        throw std::runtime_error("切换音频路由前请先停止播放");
     bool resume = engine.active && target_changed;
     if (resume) {
         auto ds = devices();
@@ -33,7 +36,7 @@ json Host::set(json patch) {
             throw std::runtime_error("副音频设备未连接，请连接后刷新");
         engine.stop();
     }
-    if (source_changed && cfg["source_id"] != "")
+    if (source_changed && cfg["source_id"] != "" && cfg["routing_mode"] == "direct")
         sync_main(cfg["source_id"]);
     auto old = store.current;
     store.current = cfg;
@@ -54,6 +57,7 @@ json Host::schema() {
             {"defaults", defaults()},
             {"limits",
              {{"gain", {0, 100}},
+              {"main_delay_ms", {0, MaxMainDelayMs}},
               {"low", {50, 15000}},
               {"high", {100, 16000}},
               {"spatial_strength", {0, 100}},
@@ -63,7 +67,7 @@ json Host::schema() {
             {"effects", {{"modes", {"space", "reverb"}}, {"default", "space"},
                          {"reverb", {{"wet_only", true}, {"size_unit", "percent"},
                          {"decay_unit", "seconds"}, {"brightness_unit", "percent"},
-                         {"main_added_delay_frames", 0},
+                         {"effect_added_main_delay_frames", 0},
                          {"semantics", "Auxiliary-only FDN tail; decay is nominal low-frequency RT60. EQ and bands filter the reverb input. Spatial strength is retained but inactive in reverb mode."}}}}},
             {"eq_frequencies_hz", EqFrequencies},
             {"eq_gain_range_db", {-12, 12}},
@@ -90,7 +94,11 @@ json Host::schema() {
               "start", "stop", "status", "latency", "pause", "import", "export", "shutdown", "serve",
               "schema"}},
             {"scope", "All DSP settings affect auxiliary output only."},
-            {"routing", "Selecting source_id or starting playback synchronizes Windows console/multimedia defaults; communications is unchanged."}};
+            {"routing", {{"modes", {"direct", "sync"}}, {"default", "direct"},
+                         {"main_device", "source_id"}, {"auxiliary_device", "target_id"},
+                         {"virtual_input", "input_id"}, {"delay_unit", "milliseconds"},
+                         {"jitter_buffer_ms", SyncQueueMs},
+                         {"semantics", "sync: virtual render loopback feeds both outputs; main_delay_ms adds main-only delay. Normal stop/error restores defaults if still owned. Communications unchanged. Effects and pause affect auxiliary only. Presets/import preserve routing."}}}};
 }
 json Host::command(const std::string &c, const json &args) {
     std::lock_guard lock(mutex);
@@ -125,8 +133,7 @@ json Host::command(const std::string &c, const json &args) {
         if (!store.presets.contains(name))
             throw std::runtime_error("预设不存在");
         auto p = store.presets[name];
-        p["source_id"] = store.current["source_id"];
-        p["target_id"] = store.current["target_id"];
+        for (auto key : RoutingKeys) p[key] = store.current[key];
         return set(p);
     }
     if (c == "effects")
@@ -140,7 +147,7 @@ json Host::command(const std::string &c, const json &args) {
                 cfg["source_id"] = default_output();
             if (cfg["target_id"] == "" || cfg["source_id"] == cfg["target_id"])
                 throw std::runtime_error("请选择不同的主音频和副音频");
-            sync_main(cfg["source_id"]);
+            if (cfg["routing_mode"] == "direct") sync_main(cfg["source_id"]);
             store.current = cfg;
             engine.start(std::make_shared<Dsp>(cfg));
             revision++;

@@ -208,6 +208,7 @@ class Ui {
     Server server;
     slint::ComponentHandle<MainWindow> main = MainWindow::create();
     slint::ComponentHandle<EditorWindow> editor = EditorWindow::create();
+    slint::ComponentHandle<SyncWindow> sync_window = SyncWindow::create();
     slint::ComponentHandle<InfoWindow> info = InfoWindow::create();
     json device_rows = json::array();
     std::vector<std::string> labels;
@@ -223,7 +224,8 @@ class Ui {
     std::shared_ptr<slint::VectorModel<BandRow>> bands = model(std::vector<BandRow>{});
     explicit Ui(fs::path dir, bool dark) : host(dir), server(host), force_dark(dark) {
         auto log = logo();
-        for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &info->global<UiData>()}) {
+        for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &info->global<UiData>(), &sync_window->global<UiData>()}) {
+            g->set_max_delay(float(MaxMainDelayMs));
             g->set_minimum_body(float(100 * pow(10., -MidCutDb / 20)));
             g->set_logo(log);
             g->set_sliders_icon(icon("sliders"));
@@ -237,6 +239,7 @@ class Ui {
         issue = host.store.warning;
         refresh();
         main->show();
+        sync_window->window().on_close_requested([this] { sync_window->hide(); return slint::CloseRequestResponse::KeepWindowShown; });
         editor->window().on_close_requested([this] {
             editor_visible = false;
             editor->hide();
@@ -363,6 +366,7 @@ class Ui {
         auto rows = model(l);
         main->global<UiData>().set_device_labels(rows);
         editor->global<UiData>().set_device_labels(rows);
+        sync_window->global<UiData>().set_device_labels(rows);
         revision = UINT64_MAX;
     }
     void dialog(std::string title, std::string text, bool input = false) {
@@ -385,17 +389,24 @@ class Ui {
                 host.command("pause", {{"enabled", !host.engine.paused.load()}});
             else if (c == "refresh")
                 refresh();
-            else if (c == "source" || c == "target") {
+            else if (c == "source" || c == "target" || c == "input") {
                 auto it = std::find(labels.begin(), labels.end(), value);
-                if (it == labels.end() || it == labels.begin())
-                    return;
+                if (it == labels.begin() && c == "input") {
+                    host.command("set", {{"input_id", ""}}); tick(); return;
+                }
+                if (it == labels.end() || it == labels.begin()) return;
                 auto &d = device_rows[std::distance(labels.begin(), it) - 1];
                 if (!d["supported"].get<bool>())
                     throw std::runtime_error(d["reason"]);
-                host.command("set", {{c == "source" ? "source_id" : "target_id", d["id"]}});
+                host.command("set", {{c == "source" ? "source_id" : c == "target" ? "target_id" : "input_id", d["id"]}});
             } else if (c == "swap") {
                 auto cfg = host.command("get");
                 host.command("set", {{"source_id", cfg["target_id"]}, {"target_id", cfg["source_id"]}});
+            } else if (c == "sync-settings") {
+                sync_window->show();
+                SetForegroundWindow(sync_window->window().win32_hwnd());
+            } else if (c == "close-sync") {
+                sync_window->hide();
             } else if (c == "details") {
                 editor_visible = true;
                 editor->show();
@@ -420,8 +431,8 @@ class Ui {
             } else if (c == "close-info")
                 info->hide();
             else if (c == "about")
-                dialog("关于 DualTone", "DualTone 0.3.0 · 原生轻量版\nC++ + Slint · "
-                                        "WASAPI\n\n主音频直出，副音频独立处理。\n支持旧配置迁移与 JSON CLI "
+                dialog("关于 DualTone", "DualTone 0.4.0 · 原生轻量版\nC++ + Slint · "
+                                        "WASAPI\n\n支持主路直出或双路同步，副音频独立处理。\n支持旧配置迁移与 JSON CLI "
                                         "v0.1。\n\nhttps://github.com/Wu-Tea/DualTone");
             else if (c == "eq-reset")
                 host.command("set", {{"gains", std::vector<double>(10, 0)}});
@@ -443,8 +454,7 @@ class Ui {
                         if (doc.at("version") < 1 || doc.at("version") > ConfigVersion)
                             throw std::runtime_error("不支持的预设版本");
                         auto cfg = validate(doc.at("settings"));
-                        cfg.erase("source_id");
-                        cfg.erase("target_id");
+                        for (auto key : RoutingKeys) cfg.erase(key);
                         host.command("set", cfg);
                     }
                 }
@@ -510,6 +520,8 @@ class Ui {
         main->global<UiData>().set_dark(dark);
         main->set_scheme(dark ? slint::cbindgen_private::ColorScheme::Dark
                               : slint::cbindgen_private::ColorScheme::Light);
+        sync_window->global<UiData>().set_dark(dark);
+        sync_window->set_scheme(dark ? slint::cbindgen_private::ColorScheme::Dark : slint::cbindgen_private::ColorScheme::Light);
         auto state = host.engine.status();
         auto cfg = host.store.current;
         if (revision != host.revision) {
@@ -542,7 +554,7 @@ class Ui {
             int index = -1;
             for (auto &[name, preset] : host.store.presets.items()) {
                 auto a = cfg, b = preset;
-                for (auto k : {"source_id", "target_id"}) {
+                for (auto k : RoutingKeys) {
                     a.erase(k);
                     b.erase(k);
                 }
@@ -551,7 +563,10 @@ class Ui {
                 names.emplace_back(name);
             }
             auto presets = model(names);
-            for (auto *g : {&main->global<UiData>(), &editor->global<UiData>()}) {
+            for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &sync_window->global<UiData>()}) {
+                g->set_sync_mode(cfg["routing_mode"] == "sync");
+                g->set_main_delay(cfg["main_delay_ms"]);
+                g->set_input_index(0);
                 g->set_gain(cfg["gain"]);
                 g->set_reverb(cfg["effect_mode"] == "reverb");
                 g->set_reverb_size(cfg["reverb_size"]);
@@ -570,6 +585,7 @@ class Ui {
                 g->set_target_icon(icon("wave"));
                 for (size_t i = 0; i < device_rows.size(); i++) {
                     auto &row = device_rows[i];
+                    if (row["id"] == cfg["input_id"]) g->set_input_index(int(i) + 1);
                     if (row["id"] == cfg["source_id"]) {
                         g->set_source_index(int(i) + 1);
                         g->set_source_icon(icon(row["icon"]));
@@ -583,10 +599,11 @@ class Ui {
                 g->set_headroom(ss("余量 " + fmt(-d->preamp_db) + " dB"));
             }
         }
-        for (auto *g : {&main->global<UiData>(), &editor->global<UiData>()}) {
+        for (auto *g : {&main->global<UiData>(), &editor->global<UiData>(), &sync_window->global<UiData>()}) {
             g->set_active(host.engine.active);
             g->set_paused(host.engine.paused);
-            g->set_status(host.engine.active ? "补声中" : "已停止");
+            g->set_status(host.engine.active ? (cfg["routing_mode"] == "sync" ? "同步中" : "补声中") : "已停止");
+            g->set_sync_status(ss(cfg["routing_mode"] == "sync" ? "主路 +" + fmt(cfg["main_delay_ms"]) + " ms · " + (host.engine.active ? "双路输出中" : "未开始播放") : "主路不增加同步延迟"));
             g->set_input_level(float(std::min(1., state.value("input_peak", 0.) * 3)));
             g->set_output_level(float(std::min(1., state.value("output_peak", 0.) * 3)));
             g->set_queue(ss("队列 " + fmt(state.value("queue_ms", 0.)) + " ms   不连续 " +
@@ -616,7 +633,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         auto argv = CommandLineToArgvW(GetCommandLineW(), &argc);
         fs::path dir = executable_dir() / L"data", shot;
         double quit_after = 0;
-        bool details = false, dark = false, start = false;
+        bool details = false, dark = false, start = false, sync_settings = false;
         int width = 0, editor_width = 0, editor_height = 0;
         for (int i = 1; i < argc; i++) {
             std::wstring a = argv[i];
@@ -624,6 +641,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                 dir = argv[++i];
             else if (a == L"--details")
                 details = true;
+            else if (a == L"--sync-settings")
+                sync_settings = true;
             else if (a == L"--dark")
                 dark = true;
             else if (a == L"--start-audio")
@@ -648,6 +667,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                                                             float(editor_height ? editor_height : 760)}});
         if (details)
             ui.action("details", "");
+        if (sync_settings) ui.action("sync-settings", "");
         if (start)
             ui.action("toggle", "");
         slint::Timer capture, quit;
@@ -661,9 +681,13 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                            {"target_index", ui.main->global<UiData>().get_target_index()},
                            {"preset_index", ui.main->global<UiData>().get_preset_index()},
                            {"editor_preset_index", ui.editor->global<UiData>().get_preset_index()},
+                           {"sync_mode", ui.sync_window->global<UiData>().get_sync_mode()},
+                           {"main_delay_ms", ui.sync_window->global<UiData>().get_main_delay()},
+                           {"input_index", ui.sync_window->global<UiData>().get_input_index()},
                            {"reverb", ui.main->global<UiData>().get_reverb()},
                            {"reverb_size", ui.main->global<UiData>().get_reverb_size()},
                            {"reverb_decay", ui.main->global<UiData>().get_reverb_decay()}});
+                if (sync_settings) snapshot(ui.sync_window->window(), shot.parent_path() / (shot.stem().wstring() + L"-sync.png"));
                 if (details) {
                     auto p = shot.parent_path() / (shot.stem().wstring() + L"-details.png");
                     snapshot(ui.editor->window(), p);

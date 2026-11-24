@@ -42,6 +42,9 @@ fs::path executable_dir() {
 json defaults() {
     return {{"source_id", ""},
             {"target_id", ""},
+            {"input_id", ""},
+            {"routing_mode", "direct"},
+            {"main_delay_ms", 0.0},
             {"gain", 8.0},
             {"eq_enabled", true},
             {"gains", std::vector<double>(10, 0)},
@@ -79,7 +82,7 @@ json validate(json v) {
                                    {"gain_db", 0.0},
                                    {"enabled", true}}});
     d.update(v);
-    for (auto key : {"source_id", "target_id"})
+    for (auto key : {"source_id", "target_id", "input_id"})
         if (!d[key].is_string() || wide(d[key].get<std::string>()).size() > 256)
             throw std::runtime_error("设备标识无效");
     for (auto key : {"eq_enabled", "band_enabled"})
@@ -87,6 +90,12 @@ json validate(json v) {
             throw std::runtime_error("开关值必须为布尔值");
     if (d["spatial_mode"] != "space")
         throw std::runtime_error("副路使用 space 空间补充");
+    if (d["routing_mode"] != "direct" && d["routing_mode"] != "sync")
+        throw std::runtime_error("routing_mode 必须为 direct 或 sync");
+    number(d["main_delay_ms"], 0, MaxMainDelayMs, "main_delay_ms");
+    if (d["routing_mode"] == "sync" && d["input_id"] != "" &&
+        (d["input_id"] == d["source_id"] || d["input_id"] == d["target_id"]))
+        throw std::runtime_error("虚拟入口不能与主音频或副音频相同");
     number(d["gain"], 0, 100, "gain");
     number(d["spatial_strength"], 0, 100, "spatial_strength");
     if (d["effect_mode"] != "space" && d["effect_mode"] != "reverb")

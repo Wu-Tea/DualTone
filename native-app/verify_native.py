@@ -12,7 +12,7 @@ from resampling import StreamingResampler
 from settings import validate
 from control import pipe_name
 
-REVERB_DEFAULTS=dict(effect_mode="space",reverb_size=40.0,reverb_decay=1.2,reverb_brightness=40.0)
+REVERB_DEFAULTS=dict(routing_mode="direct",input_id="",main_delay_ms=0.0,effect_mode="space",reverb_size=40.0,reverb_decay=1.2,reverb_brightness=40.0)
 
 def native_defaults(cfg):
     return {**validate(cfg),**REVERB_DEFAULTS}
