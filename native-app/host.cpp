@@ -66,6 +66,10 @@ json Host::set(json patch) {
 json Host::schema() {
     return {{"version", ConfigVersion},
             {"defaults", defaults()},
+            {"audio_formats", {{"sample_rates_hz", DeviceRates}, {"processing_rate_hz", ProcessingRate},
+                               {"channels", ChannelCount}, {"mix_sample_type", "float32"},
+                               {"independent_device_rates", true},
+                               {"conversion", "Causal minimum-phase FIR resampling on auxiliary path only. Main endpoint format is unchanged."}}},
             {"limits",
              {{"gain", {0, 100}},
               {"main_delay_ms", {0, MaxMainDelayMs}},

@@ -3,6 +3,7 @@
 #define NOMINMAX
 #endif
 #include "vendor/json.hpp"
+#include "device_rates.hpp"
 #include <array>
 #include <atomic>
 #include <complex>
@@ -55,7 +56,6 @@ inline constexpr int SpatialRampFrames = 480, IdleWaitMs = 100, ControlTimeoutMs
                      AnalysisFrames = 4096;
 inline constexpr std::array<int, 10> EqFrequencies = {32,   64,   125,  250,  500,
                                                       1000, 2000, 4000, 8000, 16000};
-inline constexpr std::array<int, 6> DeviceRates = {44100, 48000, 88200, 96000, 176400, 192000};
 std::string utf8(std::wstring_view s);
 std::wstring wide(std::string_view s);
 void check(HRESULT hr);

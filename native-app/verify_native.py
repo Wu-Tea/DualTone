@@ -11,6 +11,7 @@ from spatial import SpatialProcessor
 from resampling import StreamingResampler
 from settings import validate
 from control import pipe_name
+from config import SUPPORTED_DEVICE_RATES_HZ
 
 REVERB_DEFAULTS=dict(routing_mode="direct",input_id="",main_delay_ms=0.0,effect_mode="space",reverb_size=40.0,reverb_decay=1.2,reverb_brightness=40.0)
 
@@ -45,7 +46,7 @@ class NativeParity(unittest.TestCase):
                 self.assertAlmostEqual(result['preamp_db'],d['preamp_db'],places=3)
     def test_all_rate_pairs_packet_boundaries(self):
         samples=np.random.default_rng(4).normal(0,.1,(3000,2));packets=np.split(samples,[1,8,55,1015,1020,1331])
-        for rate in (44100,48000,88200,96000,176400,192000):
+        for rate in SUPPORTED_DEVICE_RATES_HZ:
             for a,b in ((rate,48000),(48000,rate)):
                 with self.subTest(source=a,target=b):
                     r=driver(dict(command='resample',source=a,target=b,packets=[x.ravel().tolist() for x in packets]))['result']

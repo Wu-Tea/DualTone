@@ -366,6 +366,10 @@ class Ui {
         labels = {"选择设备"};
         for (auto &d : device_rows) {
             auto s = d["name"].get<std::string>();
+            if (d.contains("rate")) {
+                int rate = d["rate"];
+                s += " · " + fmt(rate / 1000., rate % 1000 ? 1 : 0) + " kHz";
+            }
             if (!d["supported"].get<bool>())
                 s += " · " + d["reason"].get<std::string>();
             labels.push_back(s);
@@ -472,7 +476,7 @@ class Ui {
             else if (c == "diagnostics")
                 dialog("诊断", "");
             else if (c == "about")
-                dialog("关于 DualTone", "DualTone 0.5.3\n主音频直出，副音频独立调节。\nhttps://github.com/Wu-Tea/DualTone");
+                dialog("关于 DualTone", "DualTone 0.5.4\n主音频直出，副音频独立调节。\nhttps://github.com/Wu-Tea/DualTone");
             else if (c == "eq-reset")
                 host.command("set", {{"gains", std::vector<double>(10, 0)}});
             else if (c == "band-add") {
